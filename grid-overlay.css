@@ -6,3 +6,19 @@
   height: 100%;
   transition: opacity 0.3s ease;
 }
+
+.invalid-field {
+  border: 2px solid #d93025 !important;
+  background: #2a1a1a !important;
+}
+
+.input-tooltip {
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: fadein 0.2s;
+}
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

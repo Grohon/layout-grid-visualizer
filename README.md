@@ -6,20 +6,24 @@ The Layout Grid Visualizer is a Chrome extension designed to help web developers
 ## Key Features
 
 1. **Customizable Grid Settings:**
-   - Define the total width of the grid (e.g., 1320px) and specify the number of columns (e.g., 12).
-   - Set gutter sizes (e.g., 32px) between columns for precise control over the layout visualization.
+   - Define the total width of the grid (e.g., 1320px), number of columns (e.g., 12), and gutter size (e.g., 32px).
+   - All fields are validated: grid width, columns, and gutter size must be positive and logical.
+   - Invalid values are auto-corrected, highlighted, and explained with tooltips.
 
 2. **Dynamic Grid Overlay:**
    - Overlay a grid on the current webpage, displaying the defined columns and gutters.
-   - Toggle the grid on and off with a simple button for easy visibility (per tab).
+   - Toggle the grid on and off with a button (per tab).
    - Move the grid overlay by dragging it with the mouse.
    - Center the grid overlay at any time with a dedicated button.
 
 3. **Overlay Customization:**
-   - Customize the appearance of the grid overlay, including color and opacity, to ensure visibility against various backgrounds.
+   - Instantly customize the grid overlay's color and opacity for visibility against any background.
 
-4. **User-Friendly Interface:**
-   - Simple and intuitive popup interface to adjust grid settings, toggle the overlay, and center the grid.
+4. **User-Friendly & Accessible Interface:**
+   - Simple popup interface to adjust grid settings, toggle the overlay, center the grid, and reset to defaults.
+   - All controls are accessible with aria-labels and keyboard navigation.
+   - The "Toggle Grid" button is disabled if any field is invalid.
+   - All changes update the grid instantly for immediate feedback.
 
 ## Benefits
 - **Enhanced Design Understanding:** Visualize the layout structure, making it easier to create and maintain consistent designs.
@@ -29,3 +33,4 @@ The Layout Grid Visualizer is a Chrome extension designed to help web developers
 ## Development Considerations
 - **Chrome Extensions API:** Utilizes content scripts to inject the grid overlay into the webpage and manipulate the DOM for visualization.
 - **Performance Optimization:** The extension is designed to run efficiently without causing lag or slowdowns on the webpage.
+- **Accessibility:** The UI is designed for accessibility, with proper labels and instant feedback for all users.

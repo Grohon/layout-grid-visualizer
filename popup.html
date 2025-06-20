@@ -22,6 +22,7 @@
     }
     .form-group {
       margin-bottom: 0.75rem;
+      position: relative;
     }
     label {
       display: block;
@@ -56,7 +57,7 @@
 <body>
   <div class="form-group">
     <label for="gridWidth">Grid Width (px)</label>
-    <input type="number" id="gridWidth" value="1320" min="0">
+    <input type="number" id="gridWidth" value="1320" min="1">
   </div>
   <div class="form-group">
     <label for="columns">Number of Columns</label>
@@ -64,7 +65,7 @@
   </div>
   <div class="form-group">
     <label for="gutterSize">Gutter Size (px)</label>
-    <input type="number" id="gutterSize" value="32" min="0">
+    <input type="number" id="gutterSize" value="32" min="1">
   </div>
   <div class="form-group">
     <label for="gridColor">Grid Color</label>
@@ -77,13 +78,13 @@
     <input type="number" id="opacity" value="0.3" min="0" max="1" step="0.1">
   </div>
   <div class="form-group">
-    <button id="toggleGrid">Toggle Grid</button>
+    <button id="toggleGrid" aria-label="Show or hide grid" title="Show or hide the grid overlay">Toggle Grid</button>
   </div>
   <div class="form-group">
-    <button id="centerGrid">Center Grid</button>
+    <button id="centerGrid" aria-label="Center grid" title="Center the grid overlay">Center Grid</button>
   </div>
   <div class="form-group">
-    <button id="resetGrid">Reset to Defaults</button>
+    <button id="resetGrid" aria-label="Reset to defaults" title="Reset all fields to default values">Reset to Defaults</button>
   </div>
   <script src="popup.js"></script>
 </body>
