@@ -1,18 +1,22 @@
+const DEFAULTS = {
+  gridWidth: 1320,
+  columns: 12,
+  gutterSize: 32,
+  gridColor: '#1a73e8',
+  opacity: 0.3
+};
+
+function clamp(val, min, max) {
+  return Math.max(min, Math.min(max, val));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Load saved settings
-  chrome.storage.sync.get({
-    gridWidth: 1320,
-    columns: 12,
-    gutterSize: 32,
-    gridColor: '#1a73e8',
-    opacity: 0.3
-  }, (settings) => {
+  chrome.storage.sync.get({ ...DEFAULTS }, (settings) => {
     document.getElementById('gridWidth').value = settings.gridWidth;
     document.getElementById('columns').value = settings.columns;
     document.getElementById('gutterSize').value = settings.gutterSize;
     document.getElementById('gridColor').value = settings.gridColor;
     document.getElementById('opacity').value = settings.opacity;
-    // Query current tab for grid state
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
@@ -20,20 +24,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Save settings when changed
-  const inputs = ['gridWidth', 'columns', 'gutterSize', 'opacity'];
-  inputs.forEach(id => {
-    document.getElementById(id).addEventListener('change', saveSettings);
+  // Use 'input' for all fields for instant feedback
+  ['gridWidth', 'columns', 'gutterSize', 'opacity'].forEach(id => {
+    document.getElementById(id).addEventListener('input', saveSettings);
   });
-  // Color input: update instantly
   document.getElementById('gridColor').addEventListener('input', saveSettings);
 
-  // Toggle grid visibility
   document.getElementById('toggleGrid').addEventListener('click', () => {
-    setCurrentGridVisible(!currentGridVisible); // Optimistically update
+    setCurrentGridVisible(!currentGridVisible);
     toggleGrid();
   });
-
   document.getElementById('centerGrid').addEventListener('click', centerGrid);
   document.getElementById('resetGrid').addEventListener('click', resetToDefaults);
 });
@@ -45,50 +45,41 @@ function setCurrentGridVisible(val) {
   updateToggleButton(currentGridVisible);
 }
 
-const DEFAULTS = {
-  gridWidth: 1320,
-  columns: 12,
-  gutterSize: 32,
-  gridColor: '#1a73e8',
-  opacity: 0.3
-};
-
 function saveSettings() {
-  let gridWidth = parseInt(document.getElementById('gridWidth').value);
-  let columns = parseInt(document.getElementById('columns').value);
+  let gridWidth = Math.max(1, parseInt(document.getElementById('gridWidth').value) || DEFAULTS.gridWidth);
+  let columns = Math.max(1, parseInt(document.getElementById('columns').value) || DEFAULTS.columns);
   let gutterSize = parseInt(document.getElementById('gutterSize').value);
-  let gridColor = document.getElementById('gridColor').value;
-  let opacity = parseFloat(document.getElementById('opacity').value);
+  let gridColor = document.getElementById('gridColor').value || DEFAULTS.gridColor;
+  let opacity = clamp(parseFloat(document.getElementById('opacity').value), 0, 1);
 
-  // If gutter size is invalid, set to default
+  // Prevent gutter size from being 0 or less
+  if (!gutterSize || gutterSize <= 0) {
+    gutterSize = DEFAULTS.gutterSize;
+    document.getElementById('gutterSize').value = gutterSize;
+  }
+
   if (gutterSize >= gridWidth) {
     gutterSize = DEFAULTS.gutterSize;
     document.getElementById('gutterSize').value = gutterSize;
   }
 
-  const settings = {
-    gridWidth,
-    columns,
-    gutterSize,
-    gridColor,
-    opacity
-  };
+  document.getElementById('gridWidth').value = gridWidth;
+  document.getElementById('columns').value = columns;
+  document.getElementById('opacity').value = opacity;
 
-  chrome.storage.sync.set(settings, () => {
-    updateGrid(settings);
-  });
+  const settings = { gridWidth, columns, gutterSize, gridColor, opacity };
+  chrome.storage.sync.set(settings, () => updateGrid(settings));
 }
 
 function toggleGrid() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
-      // After toggling, always send the latest settings
       const settings = {
-        gridWidth: parseInt(document.getElementById('gridWidth').value),
-        columns: parseInt(document.getElementById('columns').value),
-        gutterSize: parseInt(document.getElementById('gutterSize').value),
-        gridColor: document.getElementById('gridColor').value,
-        opacity: parseFloat(document.getElementById('opacity').value)
+        gridWidth: Math.max(1, parseInt(document.getElementById('gridWidth').value) || DEFAULTS.gridWidth),
+        columns: Math.max(1, parseInt(document.getElementById('columns').value) || DEFAULTS.columns),
+        gutterSize: parseInt(document.getElementById('gutterSize').value) || DEFAULTS.gutterSize,
+        gridColor: document.getElementById('gridColor').value || DEFAULTS.gridColor,
+        opacity: clamp(parseFloat(document.getElementById('opacity').value), 0, 1)
       };
       chrome.tabs.sendMessage(tabs[0].id, {
         action: 'updateGrid',
