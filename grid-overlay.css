@@ -1,0 +1,8 @@
+#layout-grid-visualizer {
+  z-index: 9999;
+}
+
+.grid-column {
+  height: 100%;
+  transition: opacity 0.3s ease;
+}
