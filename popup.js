@@ -83,76 +83,95 @@ function setCurrentGridVisible(val) {
 }
 
 function saveSettings() {
-  let gridWidth = Math.max(1, parseInt(el.gridWidth.value) || DEFAULTS.gridWidth);
-  let columns = Math.max(1, parseInt(el.columns.value) || DEFAULTS.columns);
+  let gridWidth = parseInt(el.gridWidth.value);
+  let columns = parseInt(el.columns.value);
   let gutterSize = parseInt(el.gutterSize.value);
   let gridColor = el.gridColor.value || DEFAULTS.gridColor;
   let opacity = clamp(parseFloat(el.opacity.value), 0, 1);
 
-  // Validation and visual feedback
   let valid = true;
+  let corrections = [];
 
   // Gutter size
   if (el.gutterSize.value === '' || !gutterSize || gutterSize <= 0) {
-    gutterSize = DEFAULTS.gutterSize;
-    el.gutterSize.value = gutterSize;
     el.gutterSize.classList.add('invalid-field');
     valid = false;
-
     showTooltip(el.gutterSize, 'Gutter size must be greater than 0.');
+    corrections.push(() => {
+      gutterSize = DEFAULTS.gutterSize;
+      el.gutterSize.value = gutterSize;
+      el.gutterSize.classList.remove('invalid-field');
+    });
   } else {
     el.gutterSize.classList.remove('invalid-field');
   }
-  if (gutterSize >= gridWidth) {
-    gutterSize = DEFAULTS.gutterSize;
-    el.gutterSize.value = gutterSize;
+  if (gutterSize >= (gridWidth || 1)) {
     el.gutterSize.classList.add('invalid-field');
     valid = false;
-
     showTooltip(el.gutterSize, 'Gutter size must be less than grid width.');
+    corrections.push(() => {
+      gutterSize = DEFAULTS.gutterSize;
+      el.gutterSize.value = gutterSize;
+      el.gutterSize.classList.remove('invalid-field');
+    });
   }
-
   // Grid width
   if (el.gridWidth.value === '' || !gridWidth || gridWidth <= 0) {
-    gridWidth = DEFAULTS.gridWidth;
-    el.gridWidth.value = gridWidth;
     el.gridWidth.classList.add('invalid-field');
     valid = false;
-
     showTooltip(el.gridWidth, 'Grid width must be greater than 0.');
+    corrections.push(() => {
+      gridWidth = DEFAULTS.gridWidth;
+      el.gridWidth.value = gridWidth;
+      el.gridWidth.classList.remove('invalid-field');
+    });
   } else {
     el.gridWidth.classList.remove('invalid-field');
   }
-
   // Columns
   if (el.columns.value === '' || columns < 1) {
-    columns = DEFAULTS.columns;
-    el.columns.value = columns;
     el.columns.classList.add('invalid-field');
     valid = false;
-
     showTooltip(el.columns, 'Columns must be at least 1.');
+    corrections.push(() => {
+      columns = DEFAULTS.columns;
+      el.columns.value = columns;
+      el.columns.classList.remove('invalid-field');
+    });
   } else {
     el.columns.classList.remove('invalid-field');
   }
   // Opacity
   if (el.opacity.value === '' || opacity < 0 || opacity > 1 || isNaN(opacity)) {
-    opacity = DEFAULTS.opacity;
-    el.opacity.value = opacity;
     el.opacity.classList.add('invalid-field');
     valid = false;
-
     showTooltip(el.opacity, 'Opacity must be between 0 and 1.');
+    corrections.push(() => {
+      opacity = DEFAULTS.opacity;
+      el.opacity.value = opacity;
+      el.opacity.classList.remove('invalid-field');
+    });
   } else {
     el.opacity.classList.remove('invalid-field');
   }
 
+  // Optionally disable toggle if invalid
+  el.toggleGrid.disabled = !valid;
+
+  // Delay auto-correction by 1.5s to allow user to finish typing
+  if (corrections.length > 0) {
+    setTimeout(() => {
+      corrections.forEach(fn => fn());
+      // After correction, re-save settings
+      saveSettings();
+    }, 1500);
+    return;
+  }
+
+  // If all valid, update values and grid
   el.gridWidth.value = gridWidth;
   el.columns.value = columns;
   el.opacity.value = opacity;
-
-  // Optionally disable toggle if invalid
-  el.toggleGrid.disabled = !valid;
 
   const settings = { gridWidth, columns, gutterSize, gridColor, opacity };
   chrome.storage.sync.set(settings, () => updateGrid(settings));
