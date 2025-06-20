@@ -10,13 +10,43 @@ function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
+// Debounce helper
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// Cache DOM elements
+const el = {
+  gridWidth: null,
+  columns: null,
+  gutterSize: null,
+  gridColor: null,
+  opacity: null,
+  toggleGrid: null,
+  centerGrid: null,
+  resetGrid: null
+};
+
 document.addEventListener('DOMContentLoaded', () => {
+  el.gridWidth = document.getElementById('gridWidth');
+  el.columns = document.getElementById('columns');
+  el.gutterSize = document.getElementById('gutterSize');
+  el.gridColor = document.getElementById('gridColor');
+  el.opacity = document.getElementById('opacity');
+  el.toggleGrid = document.getElementById('toggleGrid');
+  el.centerGrid = document.getElementById('centerGrid');
+  el.resetGrid = document.getElementById('resetGrid');
+
   chrome.storage.sync.get({ ...DEFAULTS }, (settings) => {
-    document.getElementById('gridWidth').value = settings.gridWidth;
-    document.getElementById('columns').value = settings.columns;
-    document.getElementById('gutterSize').value = settings.gutterSize;
-    document.getElementById('gridColor').value = settings.gridColor;
-    document.getElementById('opacity').value = settings.opacity;
+    el.gridWidth.value = settings.gridWidth;
+    el.columns.value = settings.columns;
+    el.gutterSize.value = settings.gutterSize;
+    el.gridColor.value = settings.gridColor;
+    el.opacity.value = settings.opacity;
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
@@ -24,18 +54,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Use 'input' for all fields for instant feedback
-  ['gridWidth', 'columns', 'gutterSize', 'opacity'].forEach(id => {
-    document.getElementById(id).addEventListener('input', saveSettings);
+  // Use 'input' for all fields for instant feedback, debounced for performance
+  [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => {
+    input.addEventListener('input', debounce(saveSettings, 100));
   });
-  document.getElementById('gridColor').addEventListener('input', saveSettings);
+  el.gridColor.addEventListener('input', debounce(saveSettings, 100));
 
-  document.getElementById('toggleGrid').addEventListener('click', () => {
+  el.toggleGrid.addEventListener('click', () => {
     setCurrentGridVisible(!currentGridVisible);
     toggleGrid();
   });
-  document.getElementById('centerGrid').addEventListener('click', centerGrid);
-  document.getElementById('resetGrid').addEventListener('click', resetToDefaults);
+  el.centerGrid.addEventListener('click', centerGrid);
+  el.resetGrid.addEventListener('click', resetToDefaults);
 });
 
 let currentGridVisible = false;
@@ -46,26 +76,64 @@ function setCurrentGridVisible(val) {
 }
 
 function saveSettings() {
-  let gridWidth = Math.max(1, parseInt(document.getElementById('gridWidth').value) || DEFAULTS.gridWidth);
-  let columns = Math.max(1, parseInt(document.getElementById('columns').value) || DEFAULTS.columns);
-  let gutterSize = parseInt(document.getElementById('gutterSize').value);
-  let gridColor = document.getElementById('gridColor').value || DEFAULTS.gridColor;
-  let opacity = clamp(parseFloat(document.getElementById('opacity').value), 0, 1);
+  let gridWidth = Math.max(1, parseInt(el.gridWidth.value) || DEFAULTS.gridWidth);
+  let columns = Math.max(1, parseInt(el.columns.value) || DEFAULTS.columns);
+  let gutterSize = parseInt(el.gutterSize.value);
+  let gridColor = el.gridColor.value || DEFAULTS.gridColor;
+  let opacity = clamp(parseFloat(el.opacity.value), 0, 1);
 
-  // Prevent gutter size from being 0 or less
+  // Validation and visual feedback
+  let valid = true;
   if (!gutterSize || gutterSize <= 0) {
     gutterSize = DEFAULTS.gutterSize;
-    document.getElementById('gutterSize').value = gutterSize;
+    el.gutterSize.value = gutterSize;
+    el.gutterSize.classList.add('invalid-field');
+    valid = false;
+    showTooltip(el.gutterSize, 'Gutter size must be greater than 0.');
+  } else {
+    el.gutterSize.classList.remove('invalid-field');
   }
-
   if (gutterSize >= gridWidth) {
     gutterSize = DEFAULTS.gutterSize;
-    document.getElementById('gutterSize').value = gutterSize;
+    el.gutterSize.value = gutterSize;
+    el.gutterSize.classList.add('invalid-field');
+    valid = false;
+    showTooltip(el.gutterSize, 'Gutter size must be less than grid width.');
+  }
+  if (!gridWidth || gridWidth <= 0) {
+    gridWidth = DEFAULTS.gridWidth;
+    el.gridWidth.value = gridWidth;
+    el.gridWidth.classList.add('invalid-field');
+    valid = false;
+    showTooltip(el.gridWidth, 'Grid width must be greater than 0.');
+  } else {
+    el.gridWidth.classList.remove('invalid-field');
+  }
+  if (columns < 1) {
+    columns = DEFAULTS.columns;
+    el.columns.value = columns;
+    el.columns.classList.add('invalid-field');
+    valid = false;
+    showTooltip(el.columns, 'Columns must be at least 1.');
+  } else {
+    el.columns.classList.remove('invalid-field');
+  }
+  if (opacity < 0 || opacity > 1 || isNaN(opacity)) {
+    opacity = DEFAULTS.opacity;
+    el.opacity.value = opacity;
+    el.opacity.classList.add('invalid-field');
+    valid = false;
+    showTooltip(el.opacity, 'Opacity must be between 0 and 1.');
+  } else {
+    el.opacity.classList.remove('invalid-field');
   }
 
-  document.getElementById('gridWidth').value = gridWidth;
-  document.getElementById('columns').value = columns;
-  document.getElementById('opacity').value = opacity;
+  el.gridWidth.value = gridWidth;
+  el.columns.value = columns;
+  el.opacity.value = opacity;
+
+  // Optionally disable toggle if invalid
+  el.toggleGrid.disabled = !valid;
 
   const settings = { gridWidth, columns, gutterSize, gridColor, opacity };
   chrome.storage.sync.set(settings, () => updateGrid(settings));
@@ -75,11 +143,11 @@ function toggleGrid() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
       const settings = {
-        gridWidth: Math.max(1, parseInt(document.getElementById('gridWidth').value) || DEFAULTS.gridWidth),
-        columns: Math.max(1, parseInt(document.getElementById('columns').value) || DEFAULTS.columns),
-        gutterSize: parseInt(document.getElementById('gutterSize').value) || DEFAULTS.gutterSize,
-        gridColor: document.getElementById('gridColor').value || DEFAULTS.gridColor,
-        opacity: clamp(parseFloat(document.getElementById('opacity').value), 0, 1)
+        gridWidth: Math.max(1, parseInt(el.gridWidth.value) || DEFAULTS.gridWidth),
+        columns: Math.max(1, parseInt(el.columns.value) || DEFAULTS.columns),
+        gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
+        gridColor: el.gridColor.value || DEFAULTS.gridColor,
+        opacity: clamp(parseFloat(el.opacity.value), 0, 1)
       };
       chrome.tabs.sendMessage(tabs[0].id, {
         action: 'updateGrid',
@@ -90,9 +158,8 @@ function toggleGrid() {
 }
 
 function updateToggleButton(isVisible) {
-  const button = document.getElementById('toggleGrid');
-  button.textContent = isVisible ? 'Hide Grid' : 'Show Grid';
-  button.style.background = isVisible ? '#d93025' : '#1a73e8';
+  el.toggleGrid.textContent = isVisible ? 'Hide Grid' : 'Show Grid';
+  el.toggleGrid.style.background = isVisible ? '#d93025' : '#1a73e8';
 }
 
 function updateGrid(settings) {
@@ -111,12 +178,32 @@ function centerGrid() {
 }
 
 function resetToDefaults() {
-  document.getElementById('gridWidth').value = DEFAULTS.gridWidth;
-  document.getElementById('columns').value = DEFAULTS.columns;
-  document.getElementById('gutterSize').value = DEFAULTS.gutterSize;
-  document.getElementById('gridColor').value = DEFAULTS.gridColor;
-  document.getElementById('opacity').value = DEFAULTS.opacity;
+  el.gridWidth.value = DEFAULTS.gridWidth;
+  el.columns.value = DEFAULTS.columns;
+  el.gutterSize.value = DEFAULTS.gutterSize;
+  el.gridColor.value = DEFAULTS.gridColor;
+  el.opacity.value = DEFAULTS.opacity;
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
   });
+  [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
+  el.toggleGrid.disabled = false;
+}
+
+function showTooltip(input, message) {
+  let tooltip = document.createElement('div');
+  tooltip.className = 'input-tooltip';
+  tooltip.textContent = message;
+  tooltip.style.position = 'absolute';
+  tooltip.style.background = '#d93025';
+  tooltip.style.color = '#fff';
+  tooltip.style.padding = '2px 8px';
+  tooltip.style.borderRadius = '4px';
+  tooltip.style.fontSize = '12px';
+  tooltip.style.zIndex = 10000;
+  const rect = input.getBoundingClientRect();
+  tooltip.style.left = rect.right + 8 + 'px';
+  tooltip.style.top = rect.top + window.scrollY + 'px';
+  document.body.appendChild(tooltip);
+  setTimeout(() => tooltip.remove(), 1500);
 }
