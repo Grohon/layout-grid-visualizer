@@ -63,12 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => {
     input.addEventListener('input', debounce(saveSettings, 100));
   });
+
   el.gridColor.addEventListener('input', debounce(saveSettings, 100));
 
   el.toggleGrid.addEventListener('click', () => {
     setCurrentGridVisible(!currentGridVisible);
     toggleGrid();
   });
+
   el.centerGrid.addEventListener('click', centerGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
 });
@@ -89,11 +91,14 @@ function saveSettings() {
 
   // Validation and visual feedback
   let valid = true;
-  if (!gutterSize || gutterSize <= 0) {
+
+  // Gutter size
+  if (el.gutterSize.value === '' || !gutterSize || gutterSize <= 0) {
     gutterSize = DEFAULTS.gutterSize;
     el.gutterSize.value = gutterSize;
     el.gutterSize.classList.add('invalid-field');
     valid = false;
+
     showTooltip(el.gutterSize, 'Gutter size must be greater than 0.');
   } else {
     el.gutterSize.classList.remove('invalid-field');
@@ -103,31 +108,40 @@ function saveSettings() {
     el.gutterSize.value = gutterSize;
     el.gutterSize.classList.add('invalid-field');
     valid = false;
+
     showTooltip(el.gutterSize, 'Gutter size must be less than grid width.');
   }
-  if (!gridWidth || gridWidth <= 0) {
+
+  // Grid width
+  if (el.gridWidth.value === '' || !gridWidth || gridWidth <= 0) {
     gridWidth = DEFAULTS.gridWidth;
     el.gridWidth.value = gridWidth;
     el.gridWidth.classList.add('invalid-field');
     valid = false;
+
     showTooltip(el.gridWidth, 'Grid width must be greater than 0.');
   } else {
     el.gridWidth.classList.remove('invalid-field');
   }
-  if (columns < 1) {
+
+  // Columns
+  if (el.columns.value === '' || columns < 1) {
     columns = DEFAULTS.columns;
     el.columns.value = columns;
     el.columns.classList.add('invalid-field');
     valid = false;
+
     showTooltip(el.columns, 'Columns must be at least 1.');
   } else {
     el.columns.classList.remove('invalid-field');
   }
-  if (opacity < 0 || opacity > 1 || isNaN(opacity)) {
+  // Opacity
+  if (el.opacity.value === '' || opacity < 0 || opacity > 1 || isNaN(opacity)) {
     opacity = DEFAULTS.opacity;
     el.opacity.value = opacity;
     el.opacity.classList.add('invalid-field');
     valid = false;
+
     showTooltip(el.opacity, 'Opacity must be between 0 and 1.');
   } else {
     el.opacity.classList.remove('invalid-field');
@@ -154,6 +168,7 @@ function toggleGrid() {
         gridColor: el.gridColor.value || DEFAULTS.gridColor,
         opacity: clamp(parseFloat(el.opacity.value), 0, 1)
       };
+
       chrome.tabs.sendMessage(tabs[0].id, {
         action: 'updateGrid',
         settings: settings
@@ -188,15 +203,28 @@ function resetToDefaults() {
   el.gutterSize.value = DEFAULTS.gutterSize;
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
+
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
   });
+
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
+
   el.toggleGrid.disabled = false;
 }
 
 function showTooltip(input, message) {
+  // Remove any existing tooltip in the form group
+  const formGroup = input.closest('.form-group');
+
+  if (!formGroup) return;
+
+  const oldTooltip = formGroup.querySelector('.input-tooltip');
+
+  if (oldTooltip) oldTooltip.remove();
+
   let tooltip = document.createElement('div');
+
   tooltip.className = 'input-tooltip';
   tooltip.textContent = message;
   tooltip.style.position = 'absolute';
@@ -206,9 +234,12 @@ function showTooltip(input, message) {
   tooltip.style.borderRadius = '4px';
   tooltip.style.fontSize = '12px';
   tooltip.style.zIndex = 10000;
-  const rect = input.getBoundingClientRect();
-  tooltip.style.left = rect.right + 8 + 'px';
-  tooltip.style.top = rect.top + window.scrollY + 'px';
-  document.body.appendChild(tooltip);
+  tooltip.style.right = '0.5rem';
+  tooltip.style.top = '100%';
+  tooltip.style.marginTop = '2px';
+  tooltip.style.whiteSpace = 'nowrap';
+
+  formGroup.appendChild(tooltip);
+
   setTimeout(() => tooltip.remove(), 1500);
 }
