@@ -223,6 +223,8 @@ function resetToDefaults() {
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
 
+  centerGrid();
+
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
   });
