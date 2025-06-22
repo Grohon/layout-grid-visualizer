@@ -10,11 +10,31 @@ let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
 
 function settingsAffectStructure(newSettings) {
-  return (
-    newSettings.gridWidth !== settings.gridWidth ||
-    newSettings.columns !== settings.columns ||
-    newSettings.gutterSize !== settings.gutterSize
+  // Check if splitColumns changed (for split mode)
+  const currentSplitColumns = settings.splitColumns;
+  const newSplitColumns = newSettings.splitColumns;
+  const splitColumnsChanged = (
+    (Array.isArray(currentSplitColumns) && Array.isArray(newSplitColumns) && 
+     JSON.stringify(currentSplitColumns) !== JSON.stringify(newSplitColumns)) ||
+    (!Array.isArray(currentSplitColumns) && Array.isArray(newSplitColumns)) ||
+    (Array.isArray(currentSplitColumns) && !Array.isArray(newSplitColumns))
   );
+  
+  // Check if we're switching between split and uniform modes
+  const currentIsSplit = Array.isArray(settings.splitColumns) && settings.splitColumns.length > 0;
+  const newIsSplit = Array.isArray(newSettings.splitColumns) && newSettings.splitColumns.length > 0;
+  const modeChanged = currentIsSplit !== newIsSplit;
+
+  const result = (
+    newSettings.gridWidth !== settings.gridWidth ||
+    newSettings.gutterSize !== settings.gutterSize ||
+    splitColumnsChanged ||
+    modeChanged ||
+    // For uniform mode, check columns
+    (newSettings.columns !== settings.columns && !Array.isArray(newSettings.splitColumns))
+  );
+  
+  return result;
 }
 
 // Load position from storage
@@ -87,7 +107,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
   } else if (request.action === 'updateGrid') {
     const needsRebuild = settingsAffectStructure(request.settings);
+    
+    // Properly merge settings, handling undefined values
     settings = { ...settings, ...request.settings };
+    
+    // Explicitly handle undefined values for splitColumns and columns
+    if (request.settings.splitColumns === undefined) {
+      delete settings.splitColumns;
+    }
+    if (request.settings.columns === undefined) {
+      delete settings.columns;
+    }
+    
     if (gridOverlay) {
       if (needsRebuild) {
         createGrid();
@@ -110,24 +141,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 function createGrid() {
-  if (gridOverlay) {
-    removeGrid();
-  }
+  if (gridOverlay) removeGrid();
   isGridVisible = true;
 
   gridOverlay = document.createElement('div');
   gridOverlay.id = 'layout-grid-visualizer';
   gridOverlay.style.cursor = 'move';
 
-  const columnWidth = (settings.gridWidth - (settings.gutterSize * (settings.columns - 1))) / settings.columns;
-
-  // Create columns
-  for (let i = 0; i < settings.columns; i++) {
-    const column = document.createElement('div');
-    column.className = 'grid-column';
-    column.style.width = `${columnWidth}px`;
-    column.style.marginRight = i < settings.columns - 1 ? `${settings.gutterSize}px` : '0';
-    gridOverlay.appendChild(column);
+  // Split grid mode (robust detection)
+  if (Array.isArray(settings.splitColumns) && settings.splitColumns.length > 0 && settings.splitColumns.some(v => Number(v) > 0)) {
+    const splitColumns = settings.splitColumns.map(Number);
+    const total = splitColumns.reduce((a, b) => a + b, 0);
+    const numCols = splitColumns.length;
+    const totalGutter = settings.gutterSize * (numCols - 1);
+    const availableWidth = settings.gridWidth - totalGutter;
+    for (let i = 0; i < numCols; i++) {
+      const colFraction = splitColumns[i] / total;
+      const colWidth = availableWidth * colFraction;
+      const column = document.createElement('div');
+      column.className = 'grid-column';
+      column.style.width = `${colWidth}px`;
+      column.style.marginRight = i < numCols - 1 ? `${settings.gutterSize}px` : '0';
+      gridOverlay.appendChild(column);
+    }
+  } else {
+    // Uniform grid mode (robust fallback)
+    let columns = parseInt(settings.columns);
+    if (!Number.isFinite(columns) || columns < 1) columns = 12; // fallback default
+    const totalGutter = settings.gutterSize * (columns - 1);
+    const availableWidth = settings.gridWidth - totalGutter;
+    const columnWidth = availableWidth / columns;
+    for (let i = 0; i < columns; i++) {
+      const column = document.createElement('div');
+      column.className = 'grid-column';
+      column.style.width = `${columnWidth}px`;
+      column.style.marginRight = i < columns - 1 ? `${settings.gutterSize}px` : '0';
+      gridOverlay.appendChild(column);
+    }
   }
 
   updateGridStyles();
