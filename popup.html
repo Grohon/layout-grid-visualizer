@@ -14,7 +14,17 @@
 
   <div class="form-group">
     <label for="columns">Number of Columns</label>
-    <input type="number" id="columns" value="12" min="1">
+
+    <div class="w-form-grid-columns">
+      <div class="form-grid-columns">
+        <input type="number" id="columns" value="12" min="1">
+      </div>
+
+      <div class="form-grid-buttons">
+        <button id="addColumn" aria-label="Add Column" title="Add Column Grid">&#43;</button>
+        <button id="removeColumn" aria-label="Remove Column" title="Remove Column Grid">&ndash;</button>
+      </div>
+    </div>
   </div>
 
   <div class="form-group">
@@ -40,6 +50,10 @@
 
   <div class="form-group">
     <button id="centerGrid" aria-label="Center grid" title="Center the grid overlay">Center Grid</button>
+  </div>
+
+  <div class="form-group">
+    <button id="splitGrid" aria-label="Split grid" title="Split the grid overlay">Split Grid</button>
   </div>
 
   <div class="form-group">
