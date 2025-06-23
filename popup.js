@@ -3,7 +3,10 @@ const DEFAULTS = {
   columns: 12,
   gutterSize: 32,
   gridColor: '#1a73e8',
-  opacity: 0.3
+  opacity: 0.3,
+  gridClickable: true,
+  splitGridState: false,
+  splitColumnValues: [12]
 };
 
 function clamp(val, min, max) {
@@ -132,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.splitGrid = document.getElementById('splitGrid');
   el.resetGrid = document.getElementById('resetGrid');
 
-  chrome.storage.sync.get({ ...DEFAULTS, splitGridState: false, splitColumnValues: [DEFAULTS.columns] }, (settings) => {
+  chrome.storage.sync.get(DEFAULTS, (settings) => {
     console.log('Loading settings from storage:', settings);
     el.gridWidth.value = settings.gridWidth;
     el.gutterSize.value = settings.gutterSize;
