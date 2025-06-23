@@ -105,7 +105,7 @@ function updateAddRemoveListeners() {
   removeColumnBtn.onclick = null;
   if (splitGridState) {
     addColumnBtn.onclick = () => {
-      if (splitColumnValues.length < 5) {
+      if (splitColumnValues.length < 6) {
         splitColumnValues.push(1);
         restoreSplitGridUI();
         saveSettings();
