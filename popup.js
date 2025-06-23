@@ -53,7 +53,7 @@ function restoreSplitGridUI() {
 
   // Remove any existing event listeners to prevent duplicates
   el.columns.oninput = null;
-  
+
   // Set the value based on current state
   if (splitGridState) {
     // In split mode, use the first value from splitColumnValues
@@ -99,7 +99,7 @@ function restoreSplitGridUI() {
 function updateAddRemoveListeners() {
   let addColumnBtn = document.getElementById('addColumn');
   let removeColumnBtn = document.getElementById('removeColumn');
-  
+
   if (!addColumnBtn || !removeColumnBtn) return;
   addColumnBtn.onclick = null;
   removeColumnBtn.onclick = null;
@@ -132,26 +132,20 @@ document.addEventListener('DOMContentLoaded', () => {
   el.splitGrid = document.getElementById('splitGrid');
   el.resetGrid = document.getElementById('resetGrid');
 
-  let formGridColumns = document.querySelector('.form-grid-columns');
-  let addColumnBtn = document.getElementById('addColumn');
-  let removeColumnBtn = document.getElementById('removeColumn');
-
   chrome.storage.sync.get({ ...DEFAULTS, splitGridState: false, splitColumnValues: [DEFAULTS.columns] }, (settings) => {
     console.log('Loading settings from storage:', settings);
     el.gridWidth.value = settings.gridWidth;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
     el.opacity.value = settings.opacity;
-    
+
     // Set split grid state and values first
     splitGridState = settings.splitGridState;
     splitColumnValues = Array.isArray(settings.splitColumnValues) && settings.splitColumnValues.length > 0 ? settings.splitColumnValues : [settings.columns];
-    
-    console.log('After loading - splitGridState:', splitGridState, 'splitColumnValues:', splitColumnValues);
-    
+
     // Now restore the UI which will set the #columns value correctly
     restoreSplitGridUI();
-    
+
     // Don't call saveSettings here - it might override the saved state
     // Only update the grid with the current settings
     const currentSettings = {
@@ -160,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gridColor: el.gridColor.value || DEFAULTS.gridColor,
       opacity: clamp(parseFloat(el.opacity.value), 0, 1)
     };
-    
+
     if (splitGridState) {
       currentSettings.splitColumns = splitColumnValues;
       currentSettings.columns = undefined;
@@ -168,10 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
       currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
       currentSettings.splitColumns = undefined;
     }
-    
-    console.log('Sending initial grid settings:', currentSettings);
+
     updateGrid(currentSettings);
-    
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
@@ -196,20 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleGrid();
   });
   el.centerGrid.addEventListener('click', centerGrid);
-  el.splitGrid.addEventListener('click', () => {
-    splitGridState = !splitGridState;
-    
-    if (!splitGridState) {
-      // Switching to uniform: keep only #columns, set splitColumnValues to the current value
-      const val = parseInt(el.columns.value) || 1;
-      splitColumnValues = [val];
-      // Don't set el.columns.value here - let restoreSplitGridUI handle it
-    }
-
-    restoreSplitGridUI();
-    updateAddRemoveListeners();
-    saveSettings();
-  });
+  el.splitGrid.addEventListener('click', splitGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
 
   // Helper for split column field changes
@@ -343,7 +323,7 @@ function saveSettings() {
     settings.columns = columns;
     settings.splitColumns = undefined;
   }
-  
+
   chrome.storage.sync.set({
     ...settings,
     splitGridState,
@@ -412,6 +392,21 @@ function createSplitColumnInput(val = 1, idx = 1) {
   return input;
 }
 
+function splitGrid() {
+  splitGridState = !splitGridState;
+
+  if (!splitGridState) {
+    // Switching to uniform: keep only #columns, set splitColumnValues to the current value
+    const val = parseInt(el.columns.value) || 1;
+    splitColumnValues = [val];
+    // Don't set el.columns.value here - let restoreSplitGridUI handle it
+  }
+
+  restoreSplitGridUI();
+  updateAddRemoveListeners();
+  saveSettings();
+}
+
 function resetToDefaults() {
   el.gridWidth.value = DEFAULTS.gridWidth;
   el.columns.value = DEFAULTS.columns;
@@ -424,21 +419,21 @@ function resetToDefaults() {
   // Reset split grid state and columns
   splitGridState = false;
   splitColumnValues = [DEFAULTS.columns];
-  
+
   // Manually hide the form-grid-buttons div
   const formGridButtons = document.querySelector('.form-grid-buttons');
   if (formGridButtons) {
     formGridButtons.style.display = 'none';
   }
-  
+
   // Update the split grid button text
   if (el.splitGrid) {
     el.splitGrid.textContent = 'Split Grid';
   }
-  
+
   // Call restoreSplitGridUI to properly handle the UI state and event listeners
   restoreSplitGridUI();
-  
+
   saveSplitGridState();
 
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
