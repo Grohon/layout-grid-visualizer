@@ -84,6 +84,38 @@ function makeDraggable(element) {
   });
 }
 
+function makeKeyboardMovable(element) {
+  element.addEventListener('keydown', function(e) {
+    let moved = false;
+    let step = e.shiftKey ? 10 : 1;
+    if (e.key === 'ArrowLeft') {
+      overlayPosition.x = (overlayPosition.x ?? element.getBoundingClientRect().left) - step;
+      moved = true;
+    } else if (e.key === 'ArrowRight') {
+      overlayPosition.x = (overlayPosition.x ?? element.getBoundingClientRect().left) + step;
+      moved = true;
+    } else if (e.key === 'ArrowUp') {
+      overlayPosition.y = (overlayPosition.y ?? element.getBoundingClientRect().top) - step;
+      moved = true;
+    } else if (e.key === 'ArrowDown') {
+      overlayPosition.y = (overlayPosition.y ?? element.getBoundingClientRect().top) + step;
+      moved = true;
+    }
+    if (moved) {
+      e.preventDefault();
+      updateGridStyles();
+      chrome.storage.sync.set({
+        gridOverlayX: overlayPosition.x,
+        gridOverlayY: overlayPosition.y
+      });
+    }
+  });
+  // Optional: focus overlay on click for keyboard movement
+  element.addEventListener('mousedown', function() {
+    element.focus();
+  });
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'toggleGrid') {
     if (!isGridVisible) {
@@ -147,6 +179,7 @@ function createGrid() {
   gridOverlay = document.createElement('div');
   gridOverlay.id = 'layout-grid-visualizer';
   gridOverlay.style.cursor = 'move';
+  gridOverlay.tabIndex = 0; // Make focusable
 
   // Set up columns
   let colWidths = [];
@@ -180,6 +213,7 @@ function createGrid() {
   updateGridStyles();
   document.body.appendChild(gridOverlay);
   makeDraggable(gridOverlay);
+  makeKeyboardMovable(gridOverlay);
 }
 
 function updateGridStyles() {
