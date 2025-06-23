@@ -39,7 +39,7 @@ input[type="color"] {
 
 button {
   width: 100%;
-  padding: 0.5rem;
+  padding: 0.375rem;
   background: #1a73e8;
   color: white;
   border: none;
@@ -55,4 +55,22 @@ button:hover {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.w-form-grid-columns {
+  display: flex;
+  gap: 0.375rem;
+}
+
+:is(.form-grid-columns, .form-grid-buttons) {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.form-grid-columns {
+  flex: 1 1 0;
+}
+
+.form-grid-buttons {
+  display: none;
 }

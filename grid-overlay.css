@@ -1,5 +1,10 @@
 #layout-grid-visualizer {
   z-index: 9999;
+
+  &:focus-visible {
+    outline-style: dashed;
+    outline-color: rgb(0 0 0 / 30%);
+  }
 }
 
 .grid-column {

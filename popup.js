@@ -4,6 +4,9 @@ const DEFAULTS = {
   gutterSize: 32,
   gridColor: '#1a73e8',
   opacity: 0.3,
+  gridClickable: true,
+  splitGridState: false,
+  splitColumnValues: [12],
   gridClickable: true
 };
 
@@ -29,9 +32,99 @@ const el = {
   opacity: null,
   toggleGrid: null,
   centerGrid: null,
+  splitGrid: null,
   resetGrid: null,
   gridClickable: null
 };
+
+let currentGridVisible = false;
+let splitGridState = false;
+let splitColumnValues = [DEFAULTS.columns];
+
+function restoreSplitGridUI() {
+  let formGridColumns = document.querySelector('.form-grid-columns');
+  let addColumnBtn = document.getElementById('addColumn');
+  let removeColumnBtn = document.getElementById('removeColumn');
+  const formGridButtons = document.querySelector('.form-grid-buttons');
+  if (!formGridColumns) return;
+
+  // Remove only split-column fields, never #columns
+  Array.from(formGridColumns.querySelectorAll('input.split-column')).forEach(input => input.remove());
+
+  // Ensure #columns is present as the first child
+  if (formGridColumns.firstElementChild !== el.columns) {
+    formGridColumns.insertBefore(el.columns, formGridColumns.firstChild);
+  }
+
+  // Remove any existing event listeners to prevent duplicates
+  el.columns.oninput = null;
+
+  // Set the value based on current state
+  if (splitGridState) {
+    // In split mode, use the first value from splitColumnValues
+    el.columns.value = splitColumnValues[0] || 1;
+  } else {
+    // In uniform mode, use the first value from splitColumnValues
+    el.columns.value = splitColumnValues[0] || 1;
+  }
+
+  // Attach event listener to #columns using oninput property (without debounce for testing)
+  el.columns.oninput = () => {
+    const val = parseInt(el.columns.value) || 1;
+    if (splitGridState) {
+      splitColumnValues[0] = val;
+      // Don't call restoreSplitGridUI here to avoid infinite recursion
+    } else {
+      splitColumnValues = [val];
+    }
+    saveSettings();
+  };
+
+  if (splitGridState) {
+    // Add split column fields after #columns
+    for (let i = 1; i < splitColumnValues.length; i++) {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.className = 'split-column';
+      input.min = '1';
+      input.value = splitColumnValues[i];
+      input.addEventListener('input', debounce(() => window.handleSplitInput(i, input), 100));
+      formGridColumns.appendChild(input);
+    }
+    if (formGridButtons) formGridButtons.style.display = 'flex';
+    if (el.splitGrid) el.splitGrid.textContent = 'Uniform Grid';
+  } else {
+    if (formGridButtons) formGridButtons.style.display = 'none';
+    if (el.splitGrid) el.splitGrid.textContent = 'Split Grid';
+  }
+  updateAddRemoveListeners();
+}
+
+// Add/Remove column fields (only in split mode)
+function updateAddRemoveListeners() {
+  let addColumnBtn = document.getElementById('addColumn');
+  let removeColumnBtn = document.getElementById('removeColumn');
+
+  if (!addColumnBtn || !removeColumnBtn) return;
+  addColumnBtn.onclick = null;
+  removeColumnBtn.onclick = null;
+  if (splitGridState) {
+    addColumnBtn.onclick = () => {
+      if (splitColumnValues.length < 6) {
+        splitColumnValues.push(1);
+        restoreSplitGridUI();
+        saveSettings();
+      }
+    };
+    removeColumnBtn.onclick = () => {
+      if (splitColumnValues.length > 1) {
+        splitColumnValues.pop();
+        restoreSplitGridUI();
+        saveSettings();
+      }
+    };
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   el.gridWidth = document.getElementById('gridWidth');
@@ -41,51 +134,88 @@ document.addEventListener('DOMContentLoaded', () => {
   el.opacity = document.getElementById('opacity');
   el.toggleGrid = document.getElementById('toggleGrid');
   el.centerGrid = document.getElementById('centerGrid');
+  el.splitGrid = document.getElementById('splitGrid');
   el.resetGrid = document.getElementById('resetGrid');
   el.gridClickable = document.getElementById('gridClickable');
 
   chrome.storage.sync.get(DEFAULTS, (settings) => {
     el.gridWidth.value = settings.gridWidth;
-    el.columns.value = settings.columns;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
     el.opacity.value = settings.opacity;
+
+    // Set split grid state and values first
+    splitGridState = settings.splitGridState;
+    splitColumnValues = Array.isArray(settings.splitColumnValues) && settings.splitColumnValues.length > 0 ? settings.splitColumnValues : [settings.columns];
+
+    // Now restore the UI which will set the #columns value correctly
+    restoreSplitGridUI();
+
+    // Don't call saveSettings here - it might override the saved state
+    // Only update the grid with the current settings
+    const currentSettings = {
+      gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
+      gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
+      gridColor: el.gridColor.value || DEFAULTS.gridColor,
+      opacity: clamp(parseFloat(el.opacity.value), 0, 1)
+    };
+
+    if (splitGridState) {
+      currentSettings.splitColumns = splitColumnValues;
+      currentSettings.columns = undefined;
+    } else {
+      currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
+      currentSettings.splitColumns = undefined;
+    }
+
+    updateGrid(currentSettings);
+
     el.gridClickable.checked = settings.gridClickable !== false;
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
-        // If grid is not visible, show it automatically
-        if (!response || !response.isVisible) {
-          setCurrentGridVisible(true);
-          toggleGrid();
-        }
       });
       chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
     });
   });
 
-  // Use 'input' for all fields for instant feedback, debounced for performance
-  [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => {
+  // All main inputs (excluding #columns since it's handled in restoreSplitGridUI)
+  [el.gridWidth, el.gutterSize, el.opacity].forEach(input => {
     input.addEventListener('input', debounce(saveSettings, 100));
   });
-
   el.gridColor.addEventListener('input', debounce(saveSettings, 100));
 
+  // Toggle grid
   el.toggleGrid.addEventListener('click', () => {
     setCurrentGridVisible(!currentGridVisible);
     toggleGrid();
   });
-
   el.centerGrid.addEventListener('click', centerGrid);
+  el.splitGrid.addEventListener('click', splitGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
   el.gridClickable.addEventListener('change', gridClickable);
-});
 
-let currentGridVisible = false;
+  // Helper for split column field changes
+  window.handleSplitInput = function(idx, input) {
+    splitColumnValues[idx] = parseInt(input.value) || 1;
+    saveSettings();
+  };
+
+  updateAddRemoveListeners();
+});
 
 function setCurrentGridVisible(val) {
   currentGridVisible = val;
   updateToggleButton(currentGridVisible);
+}
+
+function getSplitColumnsArray() {
+  // Always use #columns as the first split value, then the rest from .split-column (excluding #columns if present)
+  const formGridColumns = document.querySelector('.form-grid-columns');
+  const splitInputs = Array.from(formGridColumns.querySelectorAll('input.split-column'));
+  // Remove #columns if it is in splitInputs (should not be, but just in case)
+  const filtered = splitInputs.filter(i => i !== el.columns);
+  return [parseInt(el.columns.value) || 1, ...filtered.map(i => parseInt(i.value) || 1)];
 }
 
 function saveSettings() {
@@ -134,6 +264,7 @@ function saveSettings() {
   } else {
     el.gridWidth.classList.remove('invalid-field');
   }
+
   // Columns
   if (el.columns.value === '' || columns < 1) {
     el.columns.classList.add('invalid-field');
@@ -179,24 +310,52 @@ function saveSettings() {
   el.columns.value = columns;
   el.opacity.value = opacity;
 
-  const settings = { gridWidth, columns, gutterSize, gridColor, opacity };
-  chrome.storage.sync.set(settings, () => updateGrid(settings));
+  // Update splitColumnValues first, then create settings object
+  if (splitGridState) {
+    splitColumnValues = getSplitColumnsArray();
+  } else {
+    splitColumnValues = [columns];
+  }
+
+  // Create settings object with updated values
+  let settings = { gridWidth, gutterSize, gridColor, opacity };
+  if (splitGridState) {
+    settings.splitColumns = splitColumnValues;
+    settings.columns = undefined;
+  } else {
+    settings.columns = columns;
+    settings.splitColumns = undefined;
+  }
+
+  chrome.storage.sync.set({
+    ...settings,
+    splitGridState,
+    splitColumnValues
+  }, () => updateGrid(settings));
 }
 
 function toggleGrid() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
-      const settings = {
-        gridWidth: Math.max(1, parseInt(el.gridWidth.value) || DEFAULTS.gridWidth),
-        columns: Math.max(1, parseInt(el.columns.value) || DEFAULTS.columns),
+      // Use current state values based on splitGridState
+      const currentSettings = {
+        gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
         gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
         gridColor: el.gridColor.value || DEFAULTS.gridColor,
         opacity: clamp(parseFloat(el.opacity.value), 0, 1)
       };
 
+      if (splitGridState) {
+        currentSettings.splitColumns = splitColumnValues;
+        currentSettings.columns = undefined;
+      } else {
+        currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
+        currentSettings.splitColumns = undefined;
+      }
+
       chrome.tabs.sendMessage(tabs[0].id, {
         action: 'updateGrid',
-        settings: settings
+        settings: currentSettings
       });
     });
   });
@@ -222,6 +381,35 @@ function centerGrid() {
   });
 }
 
+function createSplitColumnInput(val = 1, idx = 1) {
+  // idx: 0 means this is the #columns input, don't create a new input
+  if (idx === 0) return el.columns;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'split-column';
+  input.min = '1';
+  input.value = val;
+  input.addEventListener('input', debounce(() => {
+    saveSettings();
+  }, 100));
+  return input;
+}
+
+function splitGrid() {
+  splitGridState = !splitGridState;
+
+  if (!splitGridState) {
+    // Switching to uniform: keep only #columns, set splitColumnValues to the current value
+    const val = parseInt(el.columns.value) || 1;
+    splitColumnValues = [val];
+    // Don't set el.columns.value here - let restoreSplitGridUI handle it
+  }
+
+  restoreSplitGridUI();
+  updateAddRemoveListeners();
+  saveSettings();
+}
+
 function resetToDefaults() {
   el.gridWidth.value = DEFAULTS.gridWidth;
   el.columns.value = DEFAULTS.columns;
@@ -232,6 +420,26 @@ function resetToDefaults() {
 
   centerGrid();
 
+  // Reset split grid state and columns
+  splitGridState = false;
+  splitColumnValues = [DEFAULTS.columns];
+
+  // Manually hide the form-grid-buttons div
+  const formGridButtons = document.querySelector('.form-grid-buttons');
+  if (formGridButtons) {
+    formGridButtons.style.display = 'none';
+  }
+
+  // Update the split grid button text
+  if (el.splitGrid) {
+    el.splitGrid.textContent = 'Split Grid';
+  }
+
+  // Call restoreSplitGridUI to properly handle the UI state and event listeners
+  restoreSplitGridUI();
+
+  saveSplitGridState();
+
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
     // Also update gridClickable in the content script
@@ -241,7 +449,6 @@ function resetToDefaults() {
   });
 
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
-
   el.toggleGrid.disabled = false;
 }
 
@@ -282,4 +489,11 @@ function showTooltip(input, message) {
   formGroup.appendChild(tooltip);
 
   setTimeout(() => tooltip.remove(), 1500);
+}
+
+function saveSplitGridState() {
+  chrome.storage.sync.set({
+    splitGridState,
+    splitColumnValues
+  });
 }
