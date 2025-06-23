@@ -6,7 +6,8 @@ const DEFAULTS = {
   opacity: 0.3,
   gridClickable: true,
   splitGridState: false,
-  splitColumnValues: [12]
+  splitColumnValues: [12],
+  gridClickable: true
 };
 
 function clamp(val, min, max) {
@@ -32,7 +33,8 @@ const el = {
   toggleGrid: null,
   centerGrid: null,
   splitGrid: null,
-  resetGrid: null
+  resetGrid: null,
+  gridClickable: null
 };
 
 let currentGridVisible = false;
@@ -134,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.centerGrid = document.getElementById('centerGrid');
   el.splitGrid = document.getElementById('splitGrid');
   el.resetGrid = document.getElementById('resetGrid');
+  el.gridClickable = document.getElementById('gridClickable');
 
   chrome.storage.sync.get(DEFAULTS, (settings) => {
     el.gridWidth.value = settings.gridWidth;
@@ -167,10 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     updateGrid(currentSettings);
 
+    el.gridClickable.checked = settings.gridClickable !== false;
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
       });
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
     });
   });
 
@@ -188,6 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.centerGrid.addEventListener('click', centerGrid);
   el.splitGrid.addEventListener('click', splitGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
+  el.gridClickable.addEventListener('change', gridClickable);
 
   // Helper for split column field changes
   window.handleSplitInput = function(idx, input) {
@@ -410,6 +416,7 @@ function resetToDefaults() {
   el.gutterSize.value = DEFAULTS.gutterSize;
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
+  el.gridClickable.checked = DEFAULTS.gridClickable;
 
   centerGrid();
 
@@ -435,10 +442,22 @@ function resetToDefaults() {
 
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
+    // Also update gridClickable in the content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
+    });
   });
 
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
   el.toggleGrid.disabled = false;
+}
+
+function gridClickable() {
+  const isClickable = el.gridClickable.checked;
+  chrome.storage.sync.set({ gridClickable: isClickable });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+  });
 }
 
 function showTooltip(input, message) {
