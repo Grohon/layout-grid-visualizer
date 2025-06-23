@@ -91,6 +91,12 @@ Pull requests and suggestions are welcome! Please open an issue or PR for bug fi
 
 ---
 
+## Privacy Policy
+
+See our [Privacy Policy](PRIVACY.md) for details on data usage and user privacy.
+
+---
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
