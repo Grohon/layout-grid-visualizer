@@ -157,9 +157,8 @@ function createGrid() {
     const splitColumns = settings.splitColumns.map(Number);
     const total = splitColumns.reduce((a, b) => a + b, 0);
     numCols = splitColumns.length;
-    const totalGutter = settings.gutterSize * (numCols - 1);
-    const availableWidth = settings.gridWidth - totalGutter;
-    colWidths = splitColumns.map(val => availableWidth * (val / total));
+    const availableWidth = settings.gridWidth + settings.gutterSize;
+    colWidths = splitColumns.map(val => availableWidth * (val / total) - settings.gutterSize);
   } else {
     // Uniform grid mode
     numCols = parseInt(settings.columns);
