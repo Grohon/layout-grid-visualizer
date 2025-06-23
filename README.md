@@ -1,36 +1,102 @@
-# Extension Name: Layout Grid Visualizer
+# Layout Grid Visualizer
 
 ## Overview
-The Layout Grid Visualizer is a Chrome extension designed to help web developers and designers visualize the underlying grid system of a website layout. This tool allows users to overlay a customizable grid on any webpage, making it easier to understand the structure and alignment of elements based on a defined grid system, such as the 12-column layout commonly used in frameworks like Bootstrap.
+Layout Grid Visualizer is a Chrome extension that helps web developers and designers visualize and customize grid layouts on any webpage. Instantly overlay a customizable grid, including advanced split modes, to better understand, debug, and design responsive layouts.
 
-## Key Features
+---
 
-1. **Customizable Grid Settings:**
-   - Define the total width of the grid (e.g., 1320px), number of columns (e.g., 12), and gutter size (e.g., 32px).
-   - All fields are validated: grid width, columns, and gutter size must be positive and logical.
-   - Invalid values are auto-corrected, highlighted, and explained with tooltips.
+## Features
 
-2. **Dynamic Grid Overlay:**
-   - Overlay a grid on the current webpage, displaying the defined columns and gutters.
-   - Toggle the grid on and off with a button (per tab).
-   - Move the grid overlay by dragging it with the mouse.
-   - Center the grid overlay at any time with a dedicated button.
+| Feature                        | Description                                                                                 |
+|-------------------------------|---------------------------------------------------------------------------------------------|
+| Customizable Grid Settings     | Set grid width, number of columns, gutter size, color, and opacity.                         |
+| **Split Grid Mode**            | Define custom column widths for advanced grid layouts.                                       |
+| **Grid Clickability Toggle**   | Make the overlay grid interactive or pass-through for page interaction.                      |
+| **Keyboard Navigation**        | Move the overlay with arrow keys (Shift+Arrow for larger steps).                            |
+| **Persistent Overlay Position**| Overlay position is saved and restored per tab.                                             |
+| **Auto-correction & Tooltips** | Invalid values are auto-corrected with tooltips explaining corrections.                      |
+| **Accessibility**              | Focusable overlay, ARIA labels, and full keyboard navigation.                                |
+| **Instant Feedback**           | All changes update the grid instantly.                                                       |
+| **Reset to Defaults**          | One-click reset for all settings, including split grid state.                                |
+| **Performance Optimized**      | Efficient DOM updates and storage usage for smooth experience.                               |
 
-3. **Overlay Customization:**
-   - Instantly customize the grid overlay's color and opacity for visibility against any background.
+---
 
-4. **User-Friendly & Accessible Interface:**
-   - Simple popup interface to adjust grid settings, toggle the overlay, center the grid, and reset to defaults.
-   - All controls are accessible with aria-labels and keyboard navigation.
-   - The "Toggle Grid" button is disabled if any field is invalid.
-   - All changes update the grid instantly for immediate feedback.
+## Installation
 
-## Benefits
-- **Enhanced Design Understanding:** Visualize the layout structure, making it easier to create and maintain consistent designs.
-- **Debugging Tool:** Identify layout issues, such as misalignments or spacing problems, for quicker fixes.
-- **Learning Resource:** Serves as a learning tool for those new to grid systems, providing a visual representation of how grids work in web design.
+1. Download or clone this repository.
+2. Go to `chrome://extensions` in your Chrome browser.
+3. Enable "Developer mode" (top right).
+4. Click "Load unpacked" and select the project folder.
 
-## Development Considerations
-- **Chrome Extensions API:** Utilizes content scripts to inject the grid overlay into the webpage and manipulate the DOM for visualization.
-- **Performance Optimization:** The extension is designed to run efficiently without causing lag or slowdowns on the webpage.
-- **Accessibility:** The UI is designed for accessibility, with proper labels and instant feedback for all users.
+---
+
+## Usage
+
+1. Click the Layout Grid Visualizer icon in your Chrome toolbar.
+2. Adjust grid settings (width, columns, gutter, color, opacity) in the popup.
+3. Use **Split Grid** to define custom column widths (see below).
+4. Toggle the grid overlay on/off per tab.
+5. Drag the overlay to reposition, or use keyboard arrows for precise movement.
+6. Use **Center Grid** to recenter the overlay.
+7. Use **Reset to Defaults** to restore all settings.
+8. Toggle **Grid Clickable** to allow or block interaction with the overlay.
+
+---
+
+## Split Grid Mode
+
+- Click **Split Grid** to enable split mode.
+- Add or remove columns using the + and – buttons.
+- Set individual column widths (e.g., 2, 4, 6 for a 3-column split).
+- Switch back to uniform mode by clicking **Uniform Grid** or resetting.
+
+---
+
+## Keyboard Shortcuts
+
+- **Move Overlay:** Arrow keys (↑, ↓, ←, →)
+- **Move Faster:** Shift + Arrow keys
+- **Focus Overlay:** Click on the overlay
+
+---
+
+## Permissions
+
+- `activeTab`: To inject the grid overlay into the current page.
+- `storage`: To save your grid settings and overlay position.
+
+---
+
+## Troubleshooting & FAQ
+
+**Q: The grid overlay is not visible or not updating.**
+- Make sure the extension is enabled and the popup settings are valid (no red fields).
+- Try toggling the grid off and on, or resetting to defaults.
+
+**Q: I can't interact with the page under the grid.**
+- Uncheck the **Grid Clickable** option to make the overlay pass-through.
+
+**Q: How do I use split grid mode?**
+- Click **Split Grid**, then use the +/– buttons and set custom widths for each column.
+
+**Q: Is the extension accessible?**
+- Yes! All controls have ARIA labels and keyboard navigation is fully supported.
+
+---
+
+## Contributing
+
+Pull requests and suggestions are welcome! Please open an issue or PR for bug fixes, features, or improvements.
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Credits
+
+Icons and inspiration from the Chrome Extensions community.
