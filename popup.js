@@ -3,7 +3,8 @@ const DEFAULTS = {
   columns: 12,
   gutterSize: 32,
   gridColor: '#1a73e8',
-  opacity: 0.3
+  opacity: 0.3,
+  gridClickable: true
 };
 
 function clamp(val, min, max) {
@@ -28,7 +29,8 @@ const el = {
   opacity: null,
   toggleGrid: null,
   centerGrid: null,
-  resetGrid: null
+  resetGrid: null,
+  gridClickable: null
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,13 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
   el.toggleGrid = document.getElementById('toggleGrid');
   el.centerGrid = document.getElementById('centerGrid');
   el.resetGrid = document.getElementById('resetGrid');
+  el.gridClickable = document.getElementById('gridClickable');
 
-  chrome.storage.sync.get({ ...DEFAULTS }, (settings) => {
+  chrome.storage.sync.get(DEFAULTS, (settings) => {
     el.gridWidth.value = settings.gridWidth;
     el.columns.value = settings.columns;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
     el.opacity.value = settings.opacity;
+    el.gridClickable.checked = settings.gridClickable !== false;
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
@@ -56,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
           toggleGrid();
         }
       });
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
     });
   });
 
@@ -73,6 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.centerGrid.addEventListener('click', centerGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
+  el.gridClickable.addEventListener('change', () => {
+    const isClickable = el.gridClickable.checked;
+    chrome.storage.sync.set({ gridClickable: isClickable });
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+    });
+  });
 });
 
 let currentGridVisible = false;
@@ -222,11 +234,16 @@ function resetToDefaults() {
   el.gutterSize.value = DEFAULTS.gutterSize;
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
+  el.gridClickable.checked = DEFAULTS.gridClickable;
 
   centerGrid();
 
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
+    // Also update gridClickable in the content script
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
+    });
   });
 
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));

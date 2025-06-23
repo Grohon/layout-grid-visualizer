@@ -105,6 +105,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     updateGridStyles();
     chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
     // No async response needed
+  } else if (request.action === 'setGridClickable') {
+    if (gridOverlay) {
+      gridOverlay.style.pointerEvents = request.value ? 'auto' : 'none';
+    }
   }
   // Only return true if an async response will be sent
 });
