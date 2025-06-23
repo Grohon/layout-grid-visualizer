@@ -78,13 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.centerGrid.addEventListener('click', centerGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
-  el.gridClickable.addEventListener('change', () => {
-    const isClickable = el.gridClickable.checked;
-    chrome.storage.sync.set({ gridClickable: isClickable });
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
-    });
-  });
+  el.gridClickable.addEventListener('change', gridClickable);
 });
 
 let currentGridVisible = false;
@@ -249,6 +243,14 @@ function resetToDefaults() {
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
 
   el.toggleGrid.disabled = false;
+}
+
+function gridClickable() {
+  const isClickable = el.gridClickable.checked;
+  chrome.storage.sync.set({ gridClickable: isClickable });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+  });
 }
 
 function showTooltip(input, message) {
