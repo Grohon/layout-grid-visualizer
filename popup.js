@@ -136,7 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
   el.resetGrid = document.getElementById('resetGrid');
 
   chrome.storage.sync.get(DEFAULTS, (settings) => {
-    console.log('Loading settings from storage:', settings);
     el.gridWidth.value = settings.gridWidth;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
@@ -171,11 +170,6 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
         setCurrentGridVisible(response && response.isVisible);
-        // If grid is not visible, show it automatically
-        if (!response || !response.isVisible) {
-          setCurrentGridVisible(true);
-          toggleGrid();
-        }
       });
     });
   });
