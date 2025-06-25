@@ -8,6 +8,7 @@ let settings = {
 };
 let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
+let gridClickable = true; // default
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
@@ -41,6 +42,14 @@ function settingsAffectStructure(newSettings) {
 chrome.storage.sync.get({ gridOverlayX: null, gridOverlayY: null }, (pos) => {
   overlayPosition.x = pos.gridOverlayX;
   overlayPosition.y = pos.gridOverlayY;
+});
+
+// Load gridClickable state from storage on script load
+chrome.storage.sync.get({ gridClickable: true }, (result) => {
+  gridClickable = result.gridClickable;
+  if (gridOverlay) {
+    gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
+  }
 });
 
 function makeDraggable(element) {
@@ -169,8 +178,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
     // No async response needed
   } else if (request.action === 'setGridClickable') {
+    gridClickable = request.value;
     if (gridOverlay) {
-      gridOverlay.style.pointerEvents = request.value ? 'auto' : 'none';
+      gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
     }
   }
   // Only return true if an async response will be sent
@@ -218,6 +228,8 @@ function createGrid() {
   document.body.appendChild(gridOverlay);
   makeDraggable(gridOverlay);
   makeKeyboardMovable(gridOverlay);
+  // Apply clickability state
+  gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
 }
 
 function updateGridStyles() {
