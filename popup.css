@@ -9,13 +9,33 @@ body {
   font-size: 16px;
 }
 
+:root {
+  /* Colors */
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-dark-blue: #121a27;
+  --color-off-white: #f3f6f9;
+
+  --color-brand-blue: #1a73e8;
+  --color-brand-blue-dark: #1557b0;
+  --color-gray-medium: #cccccc;
+
+  --popup-bg: var(--color-dark-blue);
+  --popup-color: var(--color-off-white);
+
+  /* Size */
+  --slider-size: 0.8125rem;
+}
+
 body {
+  margin: 0;
   width: 20rem;
   padding: 1rem;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial,
     sans-serif;
-  background-color: #121a27;
-  color: #f3f6f9;
+  background-color: var(--popup-bg);
+  color: var(--popup-color);
 }
 
 .form-group {
@@ -24,31 +44,33 @@ body {
 }
 
 label {
-  display: block;
+  display: inline-block;
   margin-bottom: 0.25rem;
   font-weight: 500;
+  cursor: pointer;
+  user-select: none;
 }
 
 input[type="number"],
 input[type="color"] {
   width: 100%;
   padding: 0.375rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--color-gray-medium);
   border-radius: 0.25rem;
 }
 
 button {
   width: 100%;
   padding: 0.375rem;
-  background: #1a73e8;
-  color: white;
+  background: var(--color-brand-blue);
+  color: var(--color-white);
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;
 }
 
 button:hover {
-  background: #1557b0;
+  background: var(--color-brand-blue-dark);
 }
 
 .color-input {
@@ -57,12 +79,7 @@ button:hover {
   gap: 0.5rem;
 }
 
-.w-form-grid-columns {
-  display: flex;
-  gap: 0.375rem;
-}
-
-:is(.form-grid-columns, .form-grid-buttons) {
+:is(.w-form-grid-columns, .form-grid-columns, .form-grid-buttons) {
   display: flex;
   gap: 0.375rem;
 }
@@ -73,4 +90,52 @@ button:hover {
 
 .form-grid-buttons {
   display: none;
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--color-gray-medium);
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: var(--slider-size);
+  aspect-ratio: 1;
+  top: 50%;
+  left: 0.25rem;
+  background-color: var(--color-white);
+  transition: 300ms;
+  border-radius: 50%;
+  translate: 0 -50%;
+}
+
+input:checked + .slider {
+  background-color: var(--color-brand-blue);
+}
+
+input:checked + .slider:before {
+  translate: var(--slider-size) -50%;
 }
