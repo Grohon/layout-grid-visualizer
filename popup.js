@@ -126,6 +126,21 @@ function updateAddRemoveListeners() {
   }
 }
 
+// Helper to ensure content script and CSS are injected
+async function ensureContentScriptInjected() {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || !tabs[0]) return reject('No active tab');
+      const tabId = tabs[0].id;
+      chrome.scripting.insertCSS({ target: { tabId }, files: ['grid-overlay.css'] }, () => {
+        chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }, () => {
+          resolve();
+        });
+      });
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   el.gridWidth = document.getElementById('gridWidth');
   el.columns = document.getElementById('columns');
@@ -172,10 +187,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.gridClickable.checked = settings.gridClickable !== false;
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
-        setCurrentGridVisible(response && response.isVisible);
+      ensureContentScriptInjected().then(() => {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
+          setCurrentGridVisible(response && response.isVisible);
+        });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
       });
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
     });
   });
 
@@ -336,26 +353,28 @@ function saveSettings() {
 
 function toggleGrid() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
-      // Use current state values based on splitGridState
-      const currentSettings = {
-        gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
-        gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
-        gridColor: el.gridColor.value || DEFAULTS.gridColor,
-        opacity: clamp(parseFloat(el.opacity.value), 0, 1)
-      };
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
+        // Use current state values based on splitGridState
+        const currentSettings = {
+          gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
+          gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
+          gridColor: el.gridColor.value || DEFAULTS.gridColor,
+          opacity: clamp(parseFloat(el.opacity.value), 0, 1)
+        };
 
-      if (splitGridState) {
-        currentSettings.splitColumns = splitColumnValues;
-        currentSettings.columns = undefined;
-      } else {
-        currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
-        currentSettings.splitColumns = undefined;
-      }
+        if (splitGridState) {
+          currentSettings.splitColumns = splitColumnValues;
+          currentSettings.columns = undefined;
+        } else {
+          currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
+          currentSettings.splitColumns = undefined;
+        }
 
-      chrome.tabs.sendMessage(tabs[0].id, {
-        action: 'updateGrid',
-        settings: currentSettings
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'updateGrid',
+          settings: currentSettings
+        });
       });
     });
   });
@@ -368,16 +387,20 @@ function updateToggleButton(isVisible) {
 
 function updateGrid(settings) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, {
-      action: 'updateGrid',
-      settings: settings
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        action: 'updateGrid',
+        settings: settings
+      });
     });
   });
 }
 
 function centerGrid() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'centerGrid' });
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'centerGrid' });
+    });
   });
 }
 
@@ -444,7 +467,9 @@ function resetToDefaults() {
     updateGrid({ ...DEFAULTS });
     // Also update gridClickable in the content script
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
+      ensureContentScriptInjected().then(() => {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
+      });
     });
   });
 
@@ -456,7 +481,9 @@ function gridClickable() {
   const isClickable = el.gridClickable.checked;
   chrome.storage.sync.set({ gridClickable: isClickable });
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+    });
   });
 }
 
