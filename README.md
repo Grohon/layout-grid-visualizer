@@ -1,4 +1,6 @@
-# Layout Grid Visualizer
+# <img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923184/icon_ve3pat.png" width="24"/> Layout Grid Visualizer
+
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/marquee-promo-tile_gencqg.png">   
 
 ## Overview
 Layout Grid Visualizer is a Chrome extension that helps web developers and designers visualize and customize grid layouts on any webpage. Instantly overlay a customizable grid, including advanced split modes, to better understand, debug, and design responsive layouts.
@@ -65,6 +67,15 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 - `activeTab`: To inject the grid overlay into the current page.
 - `storage`: To save your grid settings and overlay position.
+
+---
+
+## Screenshots
+
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/screenshot-1_ehcl38.png">   
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-2_haliy4.png">   
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-4_i24771.png">   
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-3_dxdnyd.png">   
 
 ---
 
