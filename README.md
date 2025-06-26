@@ -26,6 +26,13 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Installation
 
+### Install from Chrome Web Store
+
+1. Visit the [Layout Grid Visualizer on Chrome Web Store](https://chromewebstore.google.com/detail/layout-grid-visualizer/igcfgcdgijloeenpnoacomiioiomenab).
+2. Click **Add to Chrome** and confirm the installation.
+
+### Manual Installation (for development)
+
 1. Download or clone this repository.
 2. Go to `chrome://extensions` in your Chrome browser.
 3. Enable "Developer mode" (top right).
