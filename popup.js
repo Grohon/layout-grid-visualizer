@@ -7,8 +7,27 @@ const DEFAULTS = {
   gridClickable: true,
   splitGridState: false,
   splitColumnValues: [12],
-  gridClickable: true
+  gridRuler: true
 };
+
+// Cache DOM elements
+const el = {
+  gridWidth: null,
+  columns: null,
+  gutterSize: null,
+  gridColor: null,
+  opacity: null,
+  toggleGrid: null,
+  centerGrid: null,
+  splitGrid: null,
+  resetGrid: null,
+  gridClickable: null,
+  gridRuler: null
+};
+
+let currentGridVisible = false;
+let splitGridState = false;
+let splitColumnValues = [DEFAULTS.columns];
 
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
@@ -23,23 +42,6 @@ function debounce(fn, delay) {
   };
 }
 
-// Cache DOM elements
-const el = {
-  gridWidth: null,
-  columns: null,
-  gutterSize: null,
-  gridColor: null,
-  opacity: null,
-  toggleGrid: null,
-  centerGrid: null,
-  splitGrid: null,
-  resetGrid: null,
-  gridClickable: null
-};
-
-let currentGridVisible = false;
-let splitGridState = false;
-let splitColumnValues = [DEFAULTS.columns];
 
 function restoreSplitGridUI() {
   let formGridColumns = document.querySelector('.form-grid-columns');
@@ -152,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.splitGrid = document.getElementById('splitGrid');
   el.resetGrid = document.getElementById('resetGrid');
   el.gridClickable = document.getElementById('gridClickable');
+  el.gridRuler = document.getElementById('gridRuler');
 
   chrome.storage.sync.get(DEFAULTS, (settings) => {
     el.gridWidth.value = settings.gridWidth;
@@ -186,12 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGrid(currentSettings);
 
     el.gridClickable.checked = settings.gridClickable !== false;
+    el.gridRuler.checked = settings.gridRuler !== false;
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       ensureContentScriptInjected().then(() => {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
           setCurrentGridVisible(response && response.isVisible);
         });
         chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridRuler', value: el.gridRuler.checked });
       });
     });
   });
@@ -211,6 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.splitGrid.addEventListener('click', splitGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
   el.gridClickable.addEventListener('change', gridClickable);
+  el.gridRuler.addEventListener('change', gridRuler);
 
   // Helper for split column field changes
   window.handleSplitInput = function(idx, input) {
@@ -440,6 +447,7 @@ function resetToDefaults() {
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
   el.gridClickable.checked = DEFAULTS.gridClickable;
+  el.gridRuler.checked = DEFAULTS.gridRuler;
 
   centerGrid();
 
@@ -465,10 +473,11 @@ function resetToDefaults() {
 
   chrome.storage.sync.set({ ...DEFAULTS }, () => {
     updateGrid({ ...DEFAULTS });
-    // Also update gridClickable in the content script
+    // Also update gridClickable and gridRuler in the content script
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       ensureContentScriptInjected().then(() => {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridRuler', value: DEFAULTS.gridRuler });
       });
     });
   });
@@ -483,6 +492,16 @@ function gridClickable() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     ensureContentScriptInjected().then(() => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
+    });
+  });
+}
+
+function gridRuler() {
+  const isRulerOn = el.gridRuler.checked;
+  chrome.storage.sync.set({ gridRuler: isRulerOn });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridRuler', value: isRulerOn });
     });
   });
 }

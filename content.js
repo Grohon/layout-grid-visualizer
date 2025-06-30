@@ -14,7 +14,8 @@ let settings = {
 };
 let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
-let gridClickable = true; // default
+let gridRulerOverlay = null;
+let isGridRulerVisible = false;
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
@@ -55,6 +56,14 @@ chrome.storage.sync.get({ gridClickable: true }, (result) => {
   gridClickable = result.gridClickable;
   if (gridOverlay) {
     gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
+  }
+});
+
+// On load, restore grid ruler state
+chrome.storage.sync.get({ gridRuler: false }, (result) => {
+  if (result.gridRuler) {
+    showGridRuler();
+    isGridRulerVisible = true;
   }
 });
 
@@ -190,6 +199,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
     }
     sendResponse(); // Synchronous response
+  } else if (request.action === 'setGridRuler') {
+    if (request.value) {
+      showGridRuler();
+    } else {
+      removeGridRuler();
+    }
+    // chrome.storage.sync.set({ gridRuler: request.value });
+    sendResponse(); // Synchronous response
   }
   // Always return true to indicate we may respond asynchronously
   return true;
@@ -237,8 +254,6 @@ function createGrid() {
   document.body.appendChild(gridOverlay);
   makeDraggable(gridOverlay);
   makeKeyboardMovable(gridOverlay);
-  // Apply clickability state
-  gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
 }
 
 function updateGridStyles() {
@@ -271,6 +286,9 @@ function updateGridStyles() {
     column.style.backgroundColor = settings.gridColor;
     column.style.opacity = settings.opacity;
   }
+
+  // Apply pointer events
+  gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
 }
 
 function removeGrid() {
@@ -280,4 +298,70 @@ function removeGrid() {
   gridOverlay = null;
   isGridVisible = false;
 }
+
+// --- Grid Ruler Implementation ---
+function showGridRuler() {
+  if (gridRulerOverlay) return;
+  gridRulerOverlay = document.createElement('div');
+  gridRulerOverlay.id = 'layout-grid-ruler-overlay';
+  gridRulerOverlay.style.position = 'fixed';
+  gridRulerOverlay.style.top = '0';
+  gridRulerOverlay.style.left = '0';
+  gridRulerOverlay.style.width = '100vw';
+  gridRulerOverlay.style.height = '100vh';
+  gridRulerOverlay.style.pointerEvents = 'none';
+  gridRulerOverlay.style.zIndex = '10000';
+  gridRulerOverlay.style.display = 'block';
+  gridRulerOverlay.style.background = 'none';
+  gridRulerOverlay.innerHTML = createRulerSVG();
+  document.body.appendChild(gridRulerOverlay);
+}
+
+function removeGridRuler() {
+  if (gridRulerOverlay && gridRulerOverlay.parentNode) {
+    gridRulerOverlay.parentNode.removeChild(gridRulerOverlay);
+  }
+  gridRulerOverlay = null;
+}
+
+function createRulerSVG() {
+  // Create SVG for horizontal and vertical rulers with ticks and numbers
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const majorTick = 50;
+  const minorTick = 10;
+  const rulerThickness = 24;
+  let svg = `<svg width='${width}' height='${height}' style='position:absolute;top:0;left:0;pointer-events:none;'>`;
+  // Horizontal ruler (top)
+  svg += `<rect x='0' y='0' width='${width}' height='${rulerThickness}' fill='rgba(240,240,240,0.95)' stroke='#bbb'/>`;
+  for (let x = 0; x < width; x += minorTick) {
+    let isMajor = x % majorTick === 0;
+    let tickHeight = isMajor ? rulerThickness : rulerThickness / 2;
+    let color = isMajor ? '#888' : '#bbb';
+    svg += `<line x1='${x}' y1='0' x2='${x}' y2='${tickHeight}' stroke='${color}' stroke-width='1'/>`;
+    if (isMajor && x > 0) {
+      svg += `<text x='${x + 2}' y='${rulerThickness - 6}' font-size='10' fill='#444' font-family='monospace'>${x}</text>`;
+    }
+  }
+  // Vertical ruler (left)
+  svg += `<rect x='0' y='0' width='${rulerThickness}' height='${height}' fill='rgba(240,240,240,0.95)' stroke='#bbb'/>`;
+  for (let y = 0; y < height; y += minorTick) {
+    let isMajor = y % majorTick === 0;
+    let tickWidth = isMajor ? rulerThickness : rulerThickness / 2;
+    let color = isMajor ? '#888' : '#bbb';
+    svg += `<line x1='0' y1='${y}' x2='${tickWidth}' y2='${y}' stroke='${color}' stroke-width='1'/>`;
+    if (isMajor && y > 0) {
+      svg += `<text x='2' y='${y - 2}' font-size='10' fill='#444' font-family='monospace'>${y}</text>`;
+    }
+  }
+  svg += `</svg>`;
+  return svg;
+}
+
+// Redraw ruler on resize
+window.addEventListener('resize', () => {
+  if (gridRulerOverlay && isGridRulerVisible) {
+    gridRulerOverlay.innerHTML = createRulerSVG();
+  }
+});
 })();
