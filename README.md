@@ -72,8 +72,9 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Permissions
 
-- `activeTab`: To inject the grid overlay into the current page.
-- `storage`: To save your grid settings and overlay position.
+- `activeTab`: To inject the grid overlay, rulers, and guides into the current page.
+- `storage`: To save your grid and guide settings, overlay position, and accessibility preferences.
+- `scripting`: To programmatically inject scripts (such as the content script) into the current page for grid and guide functionality.
 
 ---
 
