@@ -9,19 +9,19 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Features
 
-- **Grid Overlay:** Visualize a customizable grid on any webpage.
-- **Split & Uniform Grid Modes:** Choose between uniform columns or custom split columns.
-- **Draggable Overlay:** Move the grid overlay with your mouse or keyboard (arrow keys, Shift+arrow for faster movement).
-- **Grid Ruler:** Add horizontal and vertical rulers for precise layout alignment.
-- **Draggable, Removable, and Persistent Guides:** Create, drag, and remove guides; guides persist across sessions.
-- **Keyboard Accessibility:**
-  - Move overlay and focus guides with keyboard.
-  - Remove guides with Delete/Backspace or the accessible close (×) button (Tab, Enter/Space).
-- **Screen Reader Support:** ARIA live region announces guide removal and other changes.
-- **Visible Focus Styles:** Clear focus indicators for all interactive elements.
-- **Settings Persistence:** All grid and guide settings are saved per tab.
-- **Easy Reset & Clear:** Quickly reset to defaults or clear all guides.
-- **High Contrast & Customizable Colors:** Adjust grid color and opacity for any background.
+| Feature                              | Description                                                                                       |
+|--------------------------------------|---------------------------------------------------------------------------------------------------|
+| **Grid Overlay**                     | Visualize a customizable grid on any webpage.                                                     |
+| **Split & Uniform Grid Modes**       | Choose between uniform columns or custom split columns.                                           |
+| **Draggable Overlay**                | Move the grid overlay with your mouse or keyboard (arrow keys, Shift+arrow for faster movement).  |
+| **Grid Ruler**                       | Add horizontal and vertical rulers for precise layout alignment.                                  |
+| **Draggable, Removable, Persistent Guides** | Create, drag, and remove guides; guides persist across sessions.                          |
+| **Keyboard Accessibility**           | Move overlay and focus guides with keyboard. Remove guides with Delete/Backspace or close button. |
+| **Screen Reader Support**            | ARIA live region announces guide removal and other changes.                                       |
+| **Visible Focus Styles**             | Clear focus indicators for all interactive elements.                                              |
+| **Settings Persistence**             | All grid and guide settings are saved per tab.                                                    |
+| **Easy Reset & Clear**               | Quickly reset to defaults or clear all guides.                                                    |
+| **High Contrast & Customizable Colors** | Adjust grid color and opacity for any background.                                             |
 
 ---
 
