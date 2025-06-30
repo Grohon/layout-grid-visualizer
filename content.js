@@ -426,17 +426,38 @@ function addGuideToDOM(guide) {
 
   // Add close button
   const closeBtn = document.createElement('span');
-  closeBtn.textContent = '×';
+  closeBtn.textContent = '\u00d7';
   closeBtn.className = 'guide-close-btn';
   closeBtn.title = 'Remove guide';
+  closeBtn.tabIndex = 0;
+  closeBtn.setAttribute('aria-label', 'Remove guide');
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
     guideDiv.remove();
     gridGuides = gridGuides.filter(g => g !== guide);
     saveGuides();
+    announceGuideChange('Guide removed');
+  });
+  closeBtn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      closeBtn.click();
+    }
   });
   guideDiv.appendChild(closeBtn);
+
+  // Make guide focusable and allow keyboard removal
+  guideDiv.tabIndex = 0;
+  guideDiv.addEventListener('keydown', (e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      guideDiv.remove();
+      gridGuides = gridGuides.filter(g => g !== guide);
+      saveGuides();
+      announceGuideChange('Guide removed');
+    }
+  });
 
   // Drag to move
   let isDragging = false, dragOffset = 0, startX = 0, startY = 0;
@@ -657,4 +678,25 @@ function updateGuideDistanceLabelsWithTemp(guides) {
 }
 
 window.addEventListener('resize', updateGuideDistanceLabels);
+
+// At the end of the file, add the ARIA live region and announceGuideChange function
+if (!document.getElementById('grid-guide-live-region')) {
+  const liveRegion = document.createElement('div');
+  liveRegion.id = 'grid-guide-live-region';
+  liveRegion.setAttribute('aria-live', 'polite');
+  liveRegion.style.position = 'absolute';
+  liveRegion.style.width = '1px';
+  liveRegion.style.height = '1px';
+  liveRegion.style.overflow = 'hidden';
+  liveRegion.style.clip = 'rect(1px, 1px, 1px, 1px)';
+  liveRegion.style.whiteSpace = 'nowrap';
+  liveRegion.style.border = '0';
+  document.body.appendChild(liveRegion);
+}
+function announceGuideChange(msg) {
+  const liveRegion = document.getElementById('grid-guide-live-region');
+  if (liveRegion) {
+    liveRegion.textContent = msg;
+  }
+}
 })();

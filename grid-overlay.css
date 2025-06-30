@@ -66,10 +66,6 @@
   cursor: col-resize;
 }
 
-.layout-grid-guide:hover {
-  box-shadow: 0 0 0 2px #1976d2;
-}
-
 .layout-grid-drag-blocker {
   position: fixed;
   top: 0;
@@ -113,7 +109,8 @@
   transition: opacity 0.2s;
 }
 
-.layout-grid-guide:hover .guide-close-btn {
+.layout-grid-guide:hover .guide-close-btn,
+.layout-grid-guide:focus-within .guide-close-btn {
   opacity: 1;
   pointer-events: auto;
 }
@@ -146,4 +143,16 @@
 .layout-grid-guide.vertical .guide-close-btn {
   bottom: 8px;
   left: -10px;
+}
+
+.layout-grid-guide:focus {
+  outline: 1px dashed #1976d2;
+  outline-offset: 3px;
+  z-index: 100002;
+}
+
+.guide-close-btn:focus {
+  outline: 1px dashed #d93025;
+  outline-offset: 3px;
+  z-index: 100002;
 }

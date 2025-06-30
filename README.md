@@ -9,18 +9,19 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Features
 
-| Feature                        | Description                                                                                 |
-|-------------------------------|---------------------------------------------------------------------------------------------|
-| **Customizable Grid Settings** | Set grid width, number of columns, gutter size, color, and opacity.                         |
-| **Split Grid Mode**            | Define custom column widths for advanced grid layouts.                                       |
-| **Grid Clickability Toggle**   | Make the overlay grid interactive or pass-through for page interaction.                      |
-| **Keyboard Navigation**        | Move the overlay with arrow keys (Shift+Arrow for larger steps).                            |
-| **Persistent Overlay Position**| Overlay position is saved and restored per tab.                                             |
-| **Auto-correction & Tooltips** | Invalid values are auto-corrected with tooltips explaining corrections.                      |
-| **Accessibility**              | Focusable overlay, ARIA labels, and full keyboard navigation.                                |
-| **Instant Feedback**           | All changes update the grid instantly.                                                       |
-| **Reset to Defaults**          | One-click reset for all settings, including split grid state.                                |
-| **Performance Optimized**      | Efficient DOM updates and storage usage for smooth experience.                               |
+- **Grid Overlay:** Visualize a customizable grid on any webpage.
+- **Split & Uniform Grid Modes:** Choose between uniform columns or custom split columns.
+- **Draggable Overlay:** Move the grid overlay with your mouse or keyboard (arrow keys, Shift+arrow for faster movement).
+- **Grid Ruler:** Add horizontal and vertical rulers for precise layout alignment.
+- **Draggable, Removable, and Persistent Guides:** Create, drag, and remove guides; guides persist across sessions.
+- **Keyboard Accessibility:**
+  - Move overlay and focus guides with keyboard.
+  - Remove guides with Delete/Backspace or the accessible close (×) button (Tab, Enter/Space).
+- **Screen Reader Support:** ARIA live region announces guide removal and other changes.
+- **Visible Focus Styles:** Clear focus indicators for all interactive elements.
+- **Settings Persistence:** All grid and guide settings are saved per tab.
+- **Easy Reset & Clear:** Quickly reset to defaults or clear all guides.
+- **High Contrast & Customizable Colors:** Adjust grid color and opacity for any background.
 
 ---
 
@@ -67,6 +68,18 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 - **Move Overlay:** Arrow keys (↑, ↓, ←, →)
 - **Move Faster:** Shift + Arrow keys
 - **Focus Overlay:** Click on the overlay
+
+---
+
+## Accessibility & Keyboard Features
+
+- **Guide Removal:**
+  - Each guide now has a close (×) button that is accessible by keyboard (Tab to focus, Enter/Space to activate).
+  - Guides themselves are focusable (Tab) and can be removed by pressing Delete or Backspace.
+- **Screen Reader Announcements:**
+  - When a guide is removed, an ARIA live region announces the change for users of assistive technologies.
+- **Visible Focus Styles:**
+  - Both guides and close buttons have a clear, visible focus indicator for keyboard users.
 
 ---
 
