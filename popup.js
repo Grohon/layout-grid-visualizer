@@ -134,10 +134,20 @@ async function ensureContentScriptInjected() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || !tabs[0]) return reject('No active tab');
       const tabId = tabs[0].id;
-      chrome.scripting.insertCSS({ target: { tabId }, files: ['grid-overlay.css'] }, () => {
-        chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }, () => {
+
+      // First, try to ping the content script
+      chrome.tabs.sendMessage(tabId, { type: "ping" }, async (response) => {
+        if (chrome.runtime.lastError) {
+          // Not injected, so inject both CSS and JS
+          chrome.scripting.insertCSS({ target: { tabId }, files: ['grid-overlay.css'] }, () => {
+            chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }, () => {
+              resolve();
+            });
+          });
+        } else {
+          // Already injected
           resolve();
-        });
+        }
       });
     });
   });

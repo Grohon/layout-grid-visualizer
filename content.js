@@ -4,6 +4,12 @@ if (window.__layoutGridVisualizerInjected) {
 }
 window.__layoutGridVisualizerInjected = true;
 
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type === "ping") {
+    sendResponse({ status: "alive" });
+  }
+});
+
 let gridOverlay = null;
 let settings = {
   gridWidth: 1320,
