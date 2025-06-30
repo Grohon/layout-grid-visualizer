@@ -38,3 +38,45 @@
   height: 100vh;
   background: none;
 }
+
+.layout-grid-guide {
+  position: fixed;
+  z-index: 10001;
+  background: rgba(30, 136, 229, 0.8);
+  pointer-events: auto;
+  transition: box-shadow 0.2s;
+}
+
+.layout-grid-guide.temp {
+  background: rgba(30, 136, 229, 0.5);
+  pointer-events: none;
+}
+
+.layout-grid-guide.horizontal {
+  left: 0;
+  width: 100vw;
+  height: 1.5px;
+  cursor: row-resize;
+}
+
+.layout-grid-guide.vertical {
+  top: 0;
+  height: 100vh;
+  width: 1.5px;
+  cursor: col-resize;
+}
+
+.layout-grid-guide:hover {
+  box-shadow: 0 0 0 2px #1976d2;
+}
+
+.layout-grid-drag-blocker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10000;
+  background: transparent;
+  pointer-events: all;
+}

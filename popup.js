@@ -7,7 +7,7 @@ const DEFAULTS = {
   gridClickable: true,
   splitGridState: false,
   splitColumnValues: [12],
-  gridRuler: true
+  gridRuler: false
 };
 
 // Cache DOM elements
@@ -20,6 +20,7 @@ const el = {
   toggleGrid: null,
   centerGrid: null,
   splitGrid: null,
+  clearGridGuides: null,
   resetGrid: null,
   gridClickable: null,
   gridRuler: null
@@ -162,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.toggleGrid = document.getElementById('toggleGrid');
   el.centerGrid = document.getElementById('centerGrid');
   el.splitGrid = document.getElementById('splitGrid');
+  el.clearGridGuides = document.getElementById('clearGridGuides');
   el.resetGrid = document.getElementById('resetGrid');
   el.gridClickable = document.getElementById('gridClickable');
   el.gridRuler = document.getElementById('gridRuler');
@@ -228,6 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.resetGrid.addEventListener('click', resetToDefaults);
   el.gridClickable.addEventListener('change', gridClickable);
   el.gridRuler.addEventListener('change', gridRuler);
+  el.clearGridGuides.addEventListener('click', clearGridGuides);
 
   // Helper for split column field changes
   window.handleSplitInput = function(idx, input) {
@@ -488,6 +491,7 @@ function resetToDefaults() {
       ensureContentScriptInjected().then(() => {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
         chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridRuler', value: DEFAULTS.gridRuler });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'clearGridGuides' });
       });
     });
   });
@@ -512,6 +516,14 @@ function gridRuler() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     ensureContentScriptInjected().then(() => {
       chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridRuler', value: isRulerOn });
+    });
+  });
+}
+
+function clearGridGuides() {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    ensureContentScriptInjected().then(() => {
+      chrome.tabs.sendMessage(tabs[0].id, { action: 'clearGridGuides' });
     });
   });
 }

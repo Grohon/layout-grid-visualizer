@@ -22,6 +22,11 @@ let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
 let gridRulerOverlay = null;
 let isGridRulerVisible = false;
+let gridGuides = [];
+let isDrawingGuide = false;
+let guideType = null; // 'horizontal' or 'vertical'
+let tempGuide = null;
+let dragBlocker = null;
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
@@ -65,12 +70,21 @@ chrome.storage.sync.get({ gridClickable: true }, (result) => {
   }
 });
 
-// On load, restore grid ruler state
+// On load, restore grid ruler state and set guide visibility
 chrome.storage.sync.get({ gridRuler: false }, (result) => {
   if (result.gridRuler) {
     showGridRuler();
     isGridRulerVisible = true;
+    setGuidesVisibility(true);
+  } else {
+    setGuidesVisibility(false);
   }
+});
+
+// Restore guides from storage on load
+chrome.storage.sync.get({ gridGuides: [] }, (result) => {
+  gridGuides = result.gridGuides || [];
+  gridGuides.forEach(addGuideToDOM);
 });
 
 function makeDraggable(element) {
@@ -147,72 +161,86 @@ function makeKeyboardMovable(element) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'toggleGrid') {
-    if (!isGridVisible) {
-      // Async: fetch settings and create grid, then respond
-      chrome.storage.sync.get({
-        gridWidth: 1320,
-        columns: 12,
-        gutterSize: 32,
-        gridColor: '#1a73e8',
-        opacity: 0.3
-      }, (storedSettings) => {
-        settings = { ...settings, ...storedSettings };
-        createGrid();
-        isGridVisible = true;
-        sendResponse(); // Respond after async operation
-      });
-      return true; // Indicate async response
-    } else {
-      removeGrid();
-      isGridVisible = false;
-      sendResponse(); // Synchronous response
-    }
-  } else if (request.action === 'updateGrid') {
-    // Synchronous: update grid settings and respond
-    const needsRebuild = settingsAffectStructure(request.settings);
-
-    // Properly merge settings, handling undefined values
-    settings = { ...settings, ...request.settings };
-
-    // Explicitly handle undefined values for splitColumns and columns
-    if (request.settings.splitColumns === undefined) {
-      delete settings.splitColumns;
-    }
-
-    if (request.settings.columns === undefined) {
-      delete settings.columns;
-    }
-    if (gridOverlay) {
-      if (needsRebuild) {
-        createGrid();
+  switch (request.action) {
+    case 'toggleGrid': {
+      if (!isGridVisible) {
+        chrome.storage.sync.get({
+          gridWidth: 1320,
+          columns: 12,
+          gutterSize: 32,
+          gridColor: '#1a73e8',
+          opacity: 0.3
+        }, (storedSettings) => {
+          settings = { ...settings, ...storedSettings };
+          createGrid();
+          isGridVisible = true;
+          sendResponse();
+        });
+        return true;
       } else {
-        updateGridStyles();
+        removeGrid();
+        isGridVisible = false;
+        sendResponse();
       }
+      break;
     }
-    sendResponse(); // Synchronous response
-  } else if (request.action === 'getGridState') {
-    sendResponse({ isVisible: isGridVisible }); // Synchronous response with data
-  } else if (request.action === 'centerGrid') {
-    overlayPosition.x = null;
-    overlayPosition.y = null;
-    updateGridStyles();
-    chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
-    sendResponse(); // Synchronous response
-  } else if (request.action === 'setGridClickable') {
-    gridClickable = request.value;
-    if (gridOverlay) {
-      gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
+    case 'updateGrid': {
+      const needsRebuild = settingsAffectStructure(request.settings);
+      settings = { ...settings, ...request.settings };
+      if (request.settings.splitColumns === undefined) delete settings.splitColumns;
+      if (request.settings.columns === undefined) delete settings.columns;
+      if (gridOverlay) {
+        if (needsRebuild) {
+          createGrid();
+        } else {
+          updateGridStyles();
+        }
+      }
+      sendResponse();
+      break;
     }
-    sendResponse(); // Synchronous response
-  } else if (request.action === 'setGridRuler') {
-    if (request.value) {
-      showGridRuler();
-    } else {
-      removeGridRuler();
+    case 'getGridState': {
+      sendResponse({ isVisible: isGridVisible });
+      break;
     }
-    // chrome.storage.sync.set({ gridRuler: request.value });
-    sendResponse(); // Synchronous response
+    case 'centerGrid': {
+      overlayPosition.x = null;
+      overlayPosition.y = null;
+      updateGridStyles();
+      chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
+      sendResponse();
+      break;
+    }
+    case 'setGridClickable': {
+      gridClickable = request.value;
+      if (gridOverlay) {
+        gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
+      }
+      sendResponse();
+      break;
+    }
+    case 'setGridRuler': {
+      if (request.value) {
+        showGridRuler();
+        setGuidesVisibility(true);
+      } else {
+        removeGridRuler();
+        setGuidesVisibility(false);
+      }
+      sendResponse();
+      break;
+    }
+    case 'clearGridGuides': {
+      gridGuides.forEach(g => g._div && g._div.remove());
+      gridGuides = [];
+      saveGuides();
+      sendResponse();
+      break;
+    }
+    default: {
+      // Unknown action
+      break;
+    }
   }
   // Always return true to indicate we may respond asynchronously
   return true;
@@ -370,4 +398,137 @@ window.addEventListener('resize', () => {
     gridRulerOverlay.innerHTML = createRulerSVG();
   }
 });
+
+function addDragBlocker() {
+  if (!dragBlocker) {
+    dragBlocker = document.createElement('div');
+    dragBlocker.className = 'layout-grid-drag-blocker';
+    document.body.appendChild(dragBlocker);
+  }
+}
+
+function removeDragBlocker() {
+  if (dragBlocker) {
+    dragBlocker.remove();
+    dragBlocker = null;
+  }
+}
+
+function addGuideToDOM(guide) {
+  const guideDiv = document.createElement('div');
+  guideDiv.className = `layout-grid-guide ${guide.type}`;
+  guideDiv.dataset.type = guide.type;
+  if (guide.type === 'horizontal') {
+    guideDiv.style.top = guide.position + 'px';
+  } else {
+    guideDiv.style.left = guide.position + 'px';
+  }
+  // Drag to move
+  let isDragging = false, dragOffset = 0;
+  guideDiv.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragOffset = (guide.type === 'horizontal') ? e.clientY - guide.position : e.clientX - guide.position;
+    e.stopPropagation();
+    e.preventDefault();
+    document.body.style.userSelect = 'none';
+    addDragBlocker();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    let pos = guide.type === 'horizontal' ? e.clientY - dragOffset : e.clientX - dragOffset;
+    if (guide.type === 'horizontal') {
+      guideDiv.style.top = pos + 'px';
+    } else {
+      guideDiv.style.left = pos + 'px';
+    }
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.style.userSelect = '';
+    let pos = guide.type === 'horizontal' ? parseInt(guideDiv.style.top) : parseInt(guideDiv.style.left);
+    guide.position = pos;
+    saveGuides();
+    removeDragBlocker();
+  });
+  // Double-click to remove
+  guideDiv.addEventListener('dblclick', () => {
+    guideDiv.remove();
+    gridGuides = gridGuides.filter(g => g !== guide);
+    saveGuides();
+  });
+  document.body.appendChild(guideDiv);
+  guide._div = guideDiv;
+}
+
+function saveGuides() {
+  chrome.storage.sync.set({ gridGuides });
+}
+
+// --- Guide Drawing from Ruler ---
+// Helper to create a temporary guide for drawing
+function createTempGuide(type) {
+  const guide = document.createElement('div');
+  guide.className = `layout-grid-guide temp ${type}`;
+  return guide;
+}
+
+function onRulerMouseDown(e) {
+  // Only left click
+  if (e.button !== 0) return;
+  const rulerThickness = 24;
+  let type = null;
+  if (e.clientY <= rulerThickness) {
+    type = 'horizontal';
+  } else if (e.clientX <= rulerThickness) {
+    type = 'vertical';
+  }
+  if (type) {
+    isDrawingGuide = true;
+    guideType = type;
+    addDragBlocker();
+    tempGuide = createTempGuide(type);
+    document.body.appendChild(tempGuide);
+    moveTempGuide(e);
+  }
+}
+
+function moveTempGuide(e) {
+  if (!isDrawingGuide || !tempGuide) return;
+  if (guideType === 'horizontal') {
+    tempGuide.style.top = e.clientY + 'px';
+  } else {
+    tempGuide.style.left = e.clientX + 'px';
+  }
+}
+
+function onRulerMouseMove(e) {
+  if (!isDrawingGuide || !tempGuide) return;
+  moveTempGuide(e);
+}
+
+function onRulerMouseUp(e) {
+  if (!isDrawingGuide || !tempGuide) return;
+  let pos = guideType === 'horizontal' ? e.clientY : e.clientX;
+  let guide = { type: guideType, position: pos };
+  gridGuides.push(guide);
+  addGuideToDOM(guide);
+  saveGuides();
+  tempGuide.remove();
+  tempGuide = null;
+  isDrawingGuide = false;
+  guideType = null;
+  removeDragBlocker();
+}
+
+// Attach listeners to the document for ruler drag
+window.addEventListener('mousedown', onRulerMouseDown);
+window.addEventListener('mousemove', onRulerMouseMove);
+window.addEventListener('mouseup', onRulerMouseUp);
+
+function setGuidesVisibility(visible) {
+  gridGuides.forEach(g => {
+    if (g._div) g._div.style.display = visible ? '' : 'none';
+  });
+}
 })();
