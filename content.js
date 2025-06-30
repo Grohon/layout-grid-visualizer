@@ -310,7 +310,7 @@ function updateGridStyles() {
     width: ${settings.gridWidth}px;
     height: 100vh;
     display: flex;
-    z-index: 9999;
+    z-index: 100000;
     cursor: move;
     background: none;
   `;
@@ -344,7 +344,7 @@ function showGridRuler() {
   gridRulerOverlay.style.width = '100vw';
   gridRulerOverlay.style.height = '100vh';
   gridRulerOverlay.style.pointerEvents = 'none';
-  gridRulerOverlay.style.zIndex = '10000';
+  gridRulerOverlay.style.zIndex = '100000';
   gridRulerOverlay.style.display = 'block';
   gridRulerOverlay.style.background = 'none';
   gridRulerOverlay.innerHTML = createRulerSVG();
@@ -441,6 +441,8 @@ function addGuideToDOM(guide) {
     } else {
       guideDiv.style.left = pos + 'px';
     }
+    guide.position = pos;
+    updateGuideDistanceLabels();
   });
   window.addEventListener('mouseup', (e) => {
     if (!isDragging) return;
@@ -459,10 +461,12 @@ function addGuideToDOM(guide) {
   });
   document.body.appendChild(guideDiv);
   guide._div = guideDiv;
+  updateGuideDistanceLabels();
 }
 
 function saveGuides() {
   chrome.storage.sync.set({ gridGuides });
+  updateGuideDistanceLabels();
 }
 
 // --- Guide Drawing from Ruler ---
@@ -500,6 +504,10 @@ function moveTempGuide(e) {
   } else {
     tempGuide.style.left = e.clientX + 'px';
   }
+  // Temporarily add a temp guide to the list for live label update
+  let temp = { type: guideType, position: guideType === 'horizontal' ? e.clientY : e.clientX };
+  let tempList = gridGuides.concat([temp]);
+  updateGuideDistanceLabelsWithTemp(tempList);
 }
 
 function onRulerMouseMove(e) {
@@ -530,5 +538,98 @@ function setGuidesVisibility(visible) {
   gridGuides.forEach(g => {
     if (g._div) g._div.style.display = visible ? '' : 'none';
   });
+  // Also hide/show distance labels
+  document.querySelectorAll('.guide-distance-label').forEach(el => {
+    el.style.display = visible ? '' : 'none';
+  });
 }
+
+function updateGuideDistanceLabels() {
+  // Remove all existing labels
+  document.querySelectorAll('.guide-distance-label').forEach(el => el.remove());
+  // Only show labels if guides are visible
+  if (!isGridRulerVisible) return;
+  // Horizontal guides
+  const hGuides = gridGuides.filter(g => g.type === 'horizontal').sort((a, b) => a.position - b.position);
+  const vGuides = gridGuides.filter(g => g.type === 'vertical').sort((a, b) => a.position - b.position);
+  // Helper for horizontal
+  function addHLabel(y1, y2, x) {
+    const label = document.createElement('div');
+    label.className = 'guide-distance-label horizontal';
+    label.textContent = Math.abs(y2 - y1) + ' px';
+    label.style.top = (Math.min(y1, y2) + Math.abs(y2 - y1) / 2 - 10) + 'px';
+    label.style.left = (x || 30) + 'px';
+    document.body.appendChild(label);
+  }
+  // Helper for vertical
+  function addVLabel(x1, x2, y) {
+    const label = document.createElement('div');
+    label.className = 'guide-distance-label vertical';
+    label.textContent = Math.abs(x2 - x1) + ' px';
+    label.style.left = (Math.min(x1, x2) + Math.abs(x2 - x1) / 2 + 8) + 'px';
+    label.style.top = (y || 30) + 'px';
+    document.body.appendChild(label);
+  }
+  // Horizontal: from top ruler to first, between, last to bottom
+  const winH = window.innerHeight;
+  if (hGuides.length) {
+    addHLabel(0, hGuides[0].position, 30); // from ruler
+    for (let i = 0; i < hGuides.length - 1; ++i) {
+      addHLabel(hGuides[i].position, hGuides[i + 1].position, 30);
+    }
+    addHLabel(hGuides[hGuides.length - 1].position, winH, 30); // to bottom
+  }
+  // Vertical: from left ruler to first, between, last to right
+  const winW = window.innerWidth;
+  if (vGuides.length) {
+    addVLabel(0, vGuides[0].position, 30); // from ruler
+    for (let i = 0; i < vGuides.length - 1; ++i) {
+      addVLabel(vGuides[i].position, vGuides[i + 1].position, 30);
+    }
+    addVLabel(vGuides[vGuides.length - 1].position, winW, 30); // to right
+  }
+}
+
+function updateGuideDistanceLabelsWithTemp(guides) {
+  // Remove all existing labels
+  document.querySelectorAll('.guide-distance-label').forEach(el => el.remove());
+  if (!isGridRulerVisible) return;
+  // Horizontal guides
+  const hGuides = guides.filter(g => g.type === 'horizontal').sort((a, b) => a.position - b.position);
+  const vGuides = guides.filter(g => g.type === 'vertical').sort((a, b) => a.position - b.position);
+  function addHLabel(y1, y2, x) {
+    const label = document.createElement('div');
+    label.className = 'guide-distance-label horizontal';
+    label.textContent = Math.abs(y2 - y1) + ' px';
+    label.style.top = (Math.min(y1, y2) + Math.abs(y2 - y1) / 2 - 10) + 'px';
+    label.style.left = (x || 30) + 'px';
+    document.body.appendChild(label);
+  }
+  function addVLabel(x1, x2, y) {
+    const label = document.createElement('div');
+    label.className = 'guide-distance-label vertical';
+    label.textContent = Math.abs(x2 - x1) + ' px';
+    label.style.left = (Math.min(x1, x2) + Math.abs(x2 - x1) / 2 + 8) + 'px';
+    label.style.top = (y || 30) + 'px';
+    document.body.appendChild(label);
+  }
+  const winH = window.innerHeight;
+  if (hGuides.length) {
+    addHLabel(0, hGuides[0].position, 30);
+    for (let i = 0; i < hGuides.length - 1; ++i) {
+      addHLabel(hGuides[i].position, hGuides[i + 1].position, 30);
+    }
+    addHLabel(hGuides[hGuides.length - 1].position, winH, 30);
+  }
+  const winW = window.innerWidth;
+  if (vGuides.length) {
+    addVLabel(0, vGuides[0].position, 30);
+    for (let i = 0; i < vGuides.length - 1; ++i) {
+      addVLabel(vGuides[i].position, vGuides[i + 1].position, 30);
+    }
+    addVLabel(vGuides[vGuides.length - 1].position, winW, 30);
+  }
+}
+
+window.addEventListener('resize', updateGuideDistanceLabels);
 })();

@@ -1,5 +1,5 @@
 #layout-grid-visualizer {
-  z-index: 9999;
+  z-index: 100000;
 
   &:focus-visible {
     outline-style: dashed;
@@ -29,7 +29,7 @@
 }
 
 #layout-grid-ruler-overlay {
-  z-index: 10000;
+  z-index: 100000;
   pointer-events: none;
   position: fixed;
   top: 0;
@@ -41,7 +41,7 @@
 
 .layout-grid-guide {
   position: fixed;
-  z-index: 10001;
+  z-index: 100000;
   background: rgba(30, 136, 229, 0.8);
   pointer-events: auto;
   transition: box-shadow 0.2s;
@@ -76,7 +76,33 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 10000;
+  z-index: 100000;
   background: transparent;
   pointer-events: all;
+}
+
+.guide-distance-label {
+  position: fixed;
+  z-index: 100000;
+  background: #fff;
+  color: #1976d2;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(30,136,229,0.08);
+  pointer-events: none;
+  user-select: none;
+  font-family: monospace;
+  opacity: 0.95;
+  border: 1px solid #1976d2;
+}
+
+.guide-distance-label.horizontal {
+  left: 30px;
+  transform: translateY(-50%);
+}
+
+.guide-distance-label.vertical {
+  top: 30px;
+  transform: translateX(-50%) rotate(-90deg);
 }
