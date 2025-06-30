@@ -423,17 +423,38 @@ function addGuideToDOM(guide) {
   } else {
     guideDiv.style.left = guide.position + 'px';
   }
-  // Drag to move
-  let isDragging = false, dragOffset = 0;
-  guideDiv.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    dragOffset = (guide.type === 'horizontal') ? e.clientY - guide.position : e.clientX - guide.position;
+
+  // Add close button
+  const closeBtn = document.createElement('span');
+  closeBtn.textContent = '×';
+  closeBtn.className = 'guide-close-btn';
+  closeBtn.title = 'Remove guide';
+  closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
+    guideDiv.remove();
+    gridGuides = gridGuides.filter(g => g !== guide);
+    saveGuides();
+  });
+  guideDiv.appendChild(closeBtn);
+
+  // Drag to move
+  let isDragging = false, dragOffset = 0, startX = 0, startY = 0;
+  guideDiv.addEventListener('mousedown', (e) => {
+    if (e.target === closeBtn) return; // Don't drag if clicking close
+    isDragging = false;
+    dragOffset = (guide.type === 'horizontal') ? e.clientY - guide.position : e.clientX - guide.position;
+    startX = e.clientX;
+    startY = e.clientY;
     document.body.style.userSelect = 'none';
     addDragBlocker();
+    window.addEventListener('mousemove', dragMove);
+    window.addEventListener('mouseup', dragEnd);
   });
-  window.addEventListener('mousemove', (e) => {
+  function dragMove(e) {
+    const moveX = Math.abs(e.clientX - startX);
+    const moveY = Math.abs(e.clientY - startY);
+    if (!isDragging && (moveX > 3 || moveY > 3)) isDragging = true;
     if (!isDragging) return;
     let pos = guide.type === 'horizontal' ? e.clientY - dragOffset : e.clientX - dragOffset;
     if (guide.type === 'horizontal') {
@@ -443,23 +464,27 @@ function addGuideToDOM(guide) {
     }
     guide.position = pos;
     updateGuideDistanceLabels();
-  });
-  window.addEventListener('mouseup', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
+  }
+  function dragEnd(e) {
+    window.removeEventListener('mousemove', dragMove);
+    window.removeEventListener('mouseup', dragEnd);
     document.body.style.userSelect = '';
+    // Remove if dragged off-screen
     let pos = guide.type === 'horizontal' ? parseInt(guideDiv.style.top) : parseInt(guideDiv.style.left);
+    const limit = guide.type === 'horizontal' ? window.innerHeight : window.innerWidth;
+    if (pos < 0 || pos > limit) {
+      guideDiv.remove();
+      gridGuides = gridGuides.filter(g => g !== guide);
+      saveGuides();
+      removeDragBlocker();
+      return;
+    }
     guide.position = pos;
     saveGuides();
     removeDragBlocker();
-  });
-  // Double-click to remove
-  guideDiv.addEventListener('dblclick', () => {
-    guideDiv.remove();
-    gridGuides = gridGuides.filter(g => g !== guide);
-    saveGuides();
-  });
+  }
   document.body.appendChild(guideDiv);
+  guideDiv.style.pointerEvents = 'auto';
   guide._div = guideDiv;
   updateGuideDistanceLabels();
 }

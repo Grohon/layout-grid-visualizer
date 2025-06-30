@@ -106,3 +106,44 @@
   top: 30px;
   transform: translateX(-50%) rotate(-90deg);
 }
+
+.layout-grid-guide .guide-close-btn {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.layout-grid-guide:hover .guide-close-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.guide-close-btn {
+  position: absolute;
+  cursor: pointer;
+  user-select: none;
+  font-size: 16px;
+  line-height: 16px;
+  color: #d93025;
+  background: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(30,136,229,0.08);
+  border: 1px solid #d93025;
+  z-index: 100001;
+  pointer-events: auto;
+}
+
+.layout-grid-guide.horizontal .guide-close-btn {
+  right: 8px;
+  top: -10px;
+}
+
+.layout-grid-guide.vertical .guide-close-btn {
+  bottom: 8px;
+  left: -10px;
+}
