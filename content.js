@@ -1,3 +1,9 @@
+(function() {
+if (window.__layoutGridVisualizerInjected) {
+  return;
+}
+window.__layoutGridVisualizerInjected = true;
+
 let gridOverlay = null;
 let settings = {
   gridWidth: 1320,
@@ -128,7 +134,7 @@ function makeKeyboardMovable(element) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'toggleGrid') {
     if (!isGridVisible) {
-      // Fetch latest settings before creating the grid
+      // Async: fetch settings and create grid, then respond
       chrome.storage.sync.get({
         gridWidth: 1320,
         columns: 12,
@@ -139,27 +145,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         settings = { ...settings, ...storedSettings };
         createGrid();
         isGridVisible = true;
+        sendResponse(); // Respond after async operation
       });
-      return true; // async response
+      return true; // Indicate async response
     } else {
       removeGrid();
       isGridVisible = false;
-      // No async response needed
+      sendResponse(); // Synchronous response
     }
   } else if (request.action === 'updateGrid') {
+    // Synchronous: update grid settings and respond
     const needsRebuild = settingsAffectStructure(request.settings);
-    
+
     // Properly merge settings, handling undefined values
     settings = { ...settings, ...request.settings };
-    
+
     // Explicitly handle undefined values for splitColumns and columns
     if (request.settings.splitColumns === undefined) {
       delete settings.splitColumns;
     }
+
     if (request.settings.columns === undefined) {
       delete settings.columns;
     }
-    
     if (gridOverlay) {
       if (needsRebuild) {
         createGrid();
@@ -167,23 +175,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         updateGridStyles();
       }
     }
-    // No async response needed
+    sendResponse(); // Synchronous response
   } else if (request.action === 'getGridState') {
-    sendResponse({ isVisible: isGridVisible });
-    // Synchronous response
+    sendResponse({ isVisible: isGridVisible }); // Synchronous response with data
   } else if (request.action === 'centerGrid') {
     overlayPosition.x = null;
     overlayPosition.y = null;
     updateGridStyles();
     chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
-    // No async response needed
+    sendResponse(); // Synchronous response
   } else if (request.action === 'setGridClickable') {
     gridClickable = request.value;
     if (gridOverlay) {
       gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
     }
+    sendResponse(); // Synchronous response
   }
-  // Only return true if an async response will be sent
+  // Always return true to indicate we may respond asynchronously
+  return true;
 });
 
 function createGrid() {
@@ -271,3 +280,4 @@ function removeGrid() {
   gridOverlay = null;
   isGridVisible = false;
 }
+})();
