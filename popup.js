@@ -6,8 +6,7 @@ const DEFAULTS = {
   opacity: 0.3,
   gridClickable: true,
   splitGridState: false,
-  splitColumnValues: [12],
-  gridClickable: true
+  splitColumnValues: [12]
 };
 
 function clamp(val, min, max) {
@@ -30,6 +29,7 @@ const el = {
   gutterSize: null,
   gridColor: null,
   opacity: null,
+  opacityRange: null,
   toggleGrid: null,
   centerGrid: null,
   splitGrid: null,
@@ -41,10 +41,52 @@ let currentGridVisible = false;
 let splitGridState = false;
 let splitColumnValues = [DEFAULTS.columns];
 
+// --- Helper to send a message to the active tab's content script ---
+// Ensures content script + CSS are injected, then sends the message.
+async function ensureContentScriptInjected(tabId) {
+  try {
+    await new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, { type: "ping" }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  } catch {
+    // Not injected — inject both CSS and JS
+    try {
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ['grid-overlay.css'] });
+      await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    } catch {
+      // Restricted page — silently ignore
+    }
+  }
+}
+
+async function sendToActiveTab(action, data = {}) {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return undefined;
+    await ensureContentScriptInjected(tab.id);
+    return new Promise((resolve) => {
+      chrome.tabs.sendMessage(tab.id, { action, ...data }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(undefined);
+        } else {
+          resolve(response);
+        }
+      });
+    });
+  } catch {
+    // Messaging failed (restricted page, etc.) — silently ignore
+    return undefined;
+  }
+}
+
 function restoreSplitGridUI() {
   let formGridColumns = document.querySelector('.form-grid-columns');
-  let addColumnBtn = document.getElementById('addColumn');
-  let removeColumnBtn = document.getElementById('removeColumn');
   const formGridButtons = document.querySelector('.form-grid-buttons');
   if (!formGridColumns) return;
 
@@ -59,21 +101,15 @@ function restoreSplitGridUI() {
   // Remove any existing event listeners to prevent duplicates
   el.columns.oninput = null;
 
-  // Set the value based on current state
-  if (splitGridState) {
-    // In split mode, use the first value from splitColumnValues
-    el.columns.value = splitColumnValues[0] || 1;
-  } else {
-    // In uniform mode, use the first value from splitColumnValues
-    el.columns.value = splitColumnValues[0] || 1;
-  }
+  // Both split and uniform modes use splitColumnValues[0] as the #columns value.
+  // In split mode, it represents the first split ratio; in uniform mode, the total column count.
+  el.columns.value = splitColumnValues[0] || 1;
 
-  // Attach event listener to #columns using oninput property (without debounce for testing)
+  // Attach event listener to #columns
   el.columns.oninput = () => {
     const val = parseInt(el.columns.value) || 1;
     if (splitGridState) {
       splitColumnValues[0] = val;
-      // Don't call restoreSplitGridUI here to avoid infinite recursion
     } else {
       splitColumnValues = [val];
     }
@@ -126,37 +162,13 @@ function updateAddRemoveListeners() {
   }
 }
 
-// Helper to ensure content script and CSS are injected
-async function ensureContentScriptInjected() {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (!tabs || !tabs[0]) return reject('No active tab');
-      const tabId = tabs[0].id;
-
-      // First, try to ping the content script
-      chrome.tabs.sendMessage(tabId, { type: "ping" }, async (response) => {
-        if (chrome.runtime.lastError) {
-          // Not injected, so inject both CSS and JS
-          chrome.scripting.insertCSS({ target: { tabId }, files: ['grid-overlay.css'] }, () => {
-            chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] }, () => {
-              resolve();
-            });
-          });
-        } else {
-          // Already injected
-          resolve();
-        }
-      });
-    });
-  });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   el.gridWidth = document.getElementById('gridWidth');
   el.columns = document.getElementById('columns');
   el.gutterSize = document.getElementById('gutterSize');
   el.gridColor = document.getElementById('gridColor');
   el.opacity = document.getElementById('opacity');
+  el.opacityRange = document.getElementById('opacityRange');
   el.toggleGrid = document.getElementById('toggleGrid');
   el.centerGrid = document.getElementById('centerGrid');
   el.splitGrid = document.getElementById('splitGrid');
@@ -164,10 +176,13 @@ document.addEventListener('DOMContentLoaded', () => {
   el.gridClickable = document.getElementById('gridClickable');
 
   chrome.storage.sync.get(DEFAULTS, (settings) => {
+    if (chrome.runtime.lastError) return;
+
     el.gridWidth.value = settings.gridWidth;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
     el.opacity.value = settings.opacity;
+    if (el.opacityRange) el.opacityRange.value = settings.opacity;
 
     // Set split grid state and values first
     splitGridState = settings.splitGridState;
@@ -176,8 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Now restore the UI which will set the #columns value correctly
     restoreSplitGridUI();
 
-    // Don't call saveSettings here - it might override the saved state
-    // Only update the grid with the current settings
+    // Update the grid with the current settings (don't call saveSettings to avoid overwriting)
     const currentSettings = {
       gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
       gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
@@ -196,14 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
     updateGrid(currentSettings);
 
     el.gridClickable.checked = settings.gridClickable !== false;
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      ensureContentScriptInjected().then(() => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'getGridState' }, (response) => {
-          setCurrentGridVisible(response && response.isVisible);
-        });
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: el.gridClickable.checked });
-      });
+
+    sendToActiveTab('getGridState').then((response) => {
+      setCurrentGridVisible(response && response.isVisible);
     });
+    sendToActiveTab('setGridClickable', { value: el.gridClickable.checked });
   });
 
   // All main inputs (excluding #columns since it's handled in restoreSplitGridUI)
@@ -211,6 +222,18 @@ document.addEventListener('DOMContentLoaded', () => {
     input.addEventListener('input', debounce(saveSettings, 100));
   });
   el.gridColor.addEventListener('input', debounce(saveSettings, 100));
+
+  // Opacity range slider sync
+  if (el.opacityRange) {
+    el.opacityRange.addEventListener('input', () => {
+      el.opacity.value = el.opacityRange.value;
+      saveSettings();
+    });
+    // Also sync the range when the number input changes
+    el.opacity.addEventListener('input', () => {
+      el.opacityRange.value = el.opacity.value;
+    });
+  }
 
   // Toggle grid
   el.toggleGrid.addEventListener('click', () => {
@@ -220,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.centerGrid.addEventListener('click', centerGrid);
   el.splitGrid.addEventListener('click', splitGrid);
   el.resetGrid.addEventListener('click', resetToDefaults);
-  el.gridClickable.addEventListener('change', gridClickable);
+  el.gridClickable.addEventListener('change', handleGridClickableChange);
 
   // Helper for split column field changes
   window.handleSplitInput = function(idx, input) {
@@ -237,10 +260,8 @@ function setCurrentGridVisible(val) {
 }
 
 function getSplitColumnsArray() {
-  // Always use #columns as the first split value, then the rest from .split-column (excluding #columns if present)
   const formGridColumns = document.querySelector('.form-grid-columns');
   const splitInputs = Array.from(formGridColumns.querySelectorAll('input.split-column'));
-  // Remove #columns if it is in splitInputs (should not be, but just in case)
   const filtered = splitInputs.filter(i => i !== el.columns);
   return [parseInt(el.columns.value) || 1, ...filtered.map(i => parseInt(i.value) || 1)];
 }
@@ -313,6 +334,7 @@ function saveSettings() {
     corrections.push(() => {
       opacity = DEFAULTS.opacity;
       el.opacity.value = opacity;
+      if (el.opacityRange) el.opacityRange.value = opacity;
       el.opacity.classList.remove('invalid-field');
     });
   } else {
@@ -336,6 +358,7 @@ function saveSettings() {
   el.gridWidth.value = gridWidth;
   el.columns.value = columns;
   el.opacity.value = opacity;
+  if (el.opacityRange) el.opacityRange.value = opacity;
 
   // Update splitColumnValues first, then create settings object
   if (splitGridState) {
@@ -361,33 +384,25 @@ function saveSettings() {
   }, () => updateGrid(settings));
 }
 
-function toggleGrid() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    ensureContentScriptInjected().then(() => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleGrid' }, () => {
-        // Use current state values based on splitGridState
-        const currentSettings = {
-          gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
-          gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
-          gridColor: el.gridColor.value || DEFAULTS.gridColor,
-          opacity: clamp(parseFloat(el.opacity.value), 0, 1)
-        };
+async function toggleGrid() {
+  await sendToActiveTab('toggleGrid');
+  // Send current settings after toggling
+  const currentSettings = {
+    gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
+    gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
+    gridColor: el.gridColor.value || DEFAULTS.gridColor,
+    opacity: clamp(parseFloat(el.opacity.value), 0, 1)
+  };
 
-        if (splitGridState) {
-          currentSettings.splitColumns = splitColumnValues;
-          currentSettings.columns = undefined;
-        } else {
-          currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
-          currentSettings.splitColumns = undefined;
-        }
+  if (splitGridState) {
+    currentSettings.splitColumns = splitColumnValues;
+    currentSettings.columns = undefined;
+  } else {
+    currentSettings.columns = parseInt(el.columns.value) || DEFAULTS.columns;
+    currentSettings.splitColumns = undefined;
+  }
 
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: 'updateGrid',
-          settings: currentSettings
-        });
-      });
-    });
-  });
+  await sendToActiveTab('updateGrid', { settings: currentSettings });
 }
 
 function updateToggleButton(isVisible) {
@@ -395,37 +410,12 @@ function updateToggleButton(isVisible) {
   el.toggleGrid.style.background = isVisible ? '#d93025' : '#1a73e8';
 }
 
-function updateGrid(settings) {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    ensureContentScriptInjected().then(() => {
-      chrome.tabs.sendMessage(tabs[0].id, {
-        action: 'updateGrid',
-        settings: settings
-      });
-    });
-  });
+async function updateGrid(settings) {
+  await sendToActiveTab('updateGrid', { settings });
 }
 
-function centerGrid() {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    ensureContentScriptInjected().then(() => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'centerGrid' });
-    });
-  });
-}
-
-function createSplitColumnInput(val = 1, idx = 1) {
-  // idx: 0 means this is the #columns input, don't create a new input
-  if (idx === 0) return el.columns;
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.className = 'split-column';
-  input.min = '1';
-  input.value = val;
-  input.addEventListener('input', debounce(() => {
-    saveSettings();
-  }, 100));
-  return input;
+async function centerGrid() {
+  await sendToActiveTab('centerGrid');
 }
 
 function splitGrid() {
@@ -435,7 +425,6 @@ function splitGrid() {
     // Switching to uniform: keep only #columns, set splitColumnValues to the current value
     const val = parseInt(el.columns.value) || 1;
     splitColumnValues = [val];
-    // Don't set el.columns.value here - let restoreSplitGridUI handle it
   }
 
   restoreSplitGridUI();
@@ -443,12 +432,13 @@ function splitGrid() {
   saveSettings();
 }
 
-function resetToDefaults() {
+async function resetToDefaults() {
   el.gridWidth.value = DEFAULTS.gridWidth;
   el.columns.value = DEFAULTS.columns;
   el.gutterSize.value = DEFAULTS.gutterSize;
   el.gridColor.value = DEFAULTS.gridColor;
   el.opacity.value = DEFAULTS.opacity;
+  if (el.opacityRange) el.opacityRange.value = DEFAULTS.opacity;
   el.gridClickable.checked = DEFAULTS.gridClickable;
 
   centerGrid();
@@ -473,58 +463,33 @@ function resetToDefaults() {
 
   saveSplitGridState();
 
-  chrome.storage.sync.set({ ...DEFAULTS }, () => {
-    updateGrid({ ...DEFAULTS });
-    // Also update gridClickable in the content script
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      ensureContentScriptInjected().then(() => {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: DEFAULTS.gridClickable });
-      });
-    });
+  chrome.storage.sync.set({ ...DEFAULTS }, async () => {
+    await updateGrid({ ...DEFAULTS });
+    await sendToActiveTab('setGridClickable', { value: DEFAULTS.gridClickable });
   });
 
   [el.gridWidth, el.columns, el.gutterSize, el.opacity].forEach(input => input.classList.remove('invalid-field'));
   el.toggleGrid.disabled = false;
 }
 
-function gridClickable() {
+async function handleGridClickableChange() {
   const isClickable = el.gridClickable.checked;
   chrome.storage.sync.set({ gridClickable: isClickable });
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    ensureContentScriptInjected().then(() => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: 'setGridClickable', value: isClickable });
-    });
-  });
+  await sendToActiveTab('setGridClickable', { value: isClickable });
 }
 
 function showTooltip(input, message) {
-  // Remove any existing tooltip in the form group
   const formGroup = input.closest('.form-group');
-
   if (!formGroup) return;
 
   const oldTooltip = formGroup.querySelector('.input-tooltip');
-
   if (oldTooltip) oldTooltip.remove();
 
-  let tooltip = document.createElement('div');
-
+  const tooltip = document.createElement('div');
   tooltip.className = 'input-tooltip';
   tooltip.textContent = message;
-  tooltip.style.position = 'absolute';
-  tooltip.style.background = '#d93025';
-  tooltip.style.color = '#fff';
-  tooltip.style.padding = '2px 8px';
-  tooltip.style.borderRadius = '4px';
-  tooltip.style.fontSize = '12px';
-  tooltip.style.zIndex = 10000;
-  tooltip.style.right = '0.5rem';
-  tooltip.style.top = '100%';
-  tooltip.style.marginTop = '2px';
-  tooltip.style.whiteSpace = 'nowrap';
 
   formGroup.appendChild(tooltip);
-
   setTimeout(() => tooltip.remove(), 1500);
 }
 

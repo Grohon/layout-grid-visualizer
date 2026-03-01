@@ -1,6 +1,6 @@
 # <img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923184/icon_ve3pat.png" width="24"/> Layout Grid Visualizer
 
-<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/marquee-promo-tile_gencqg.png">   
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/marquee-promo-tile_gencqg.png">
 
 ## Overview
 Layout Grid Visualizer is a Chrome extension that helps web developers and designers visualize and customize grid layouts on any webpage. Instantly overlay a customizable grid, including advanced split modes, to better understand, debug, and design responsive layouts.
@@ -15,8 +15,10 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 | **Split Grid Mode**            | Define custom column widths for advanced grid layouts.                                       |
 | **Grid Clickability Toggle**   | Make the overlay grid interactive or pass-through for page interaction.                      |
 | **Keyboard Navigation**        | Move the overlay with arrow keys (Shift+Arrow for larger steps).                            |
+| **Keyboard Shortcut**          | Toggle grid overlay with `Alt+Shift+G` — no popup needed.                                   |
 | **Persistent Overlay Position**| Overlay position is saved and restored per tab.                                             |
 | **Auto-correction & Tooltips** | Invalid values are auto-corrected with tooltips explaining corrections.                      |
+| **Opacity Slider**             | Intuitive range slider for adjusting grid opacity.                                           |
 | **Accessibility**              | Focusable overlay, ARIA labels, and full keyboard navigation.                                |
 | **Instant Feedback**           | All changes update the grid instantly.                                                       |
 | **Reset to Defaults**          | One-click reset for all settings, including split grid state.                                |
@@ -64,6 +66,7 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Keyboard Shortcuts
 
+- **Toggle Grid:** `Alt+Shift+G` — works without opening the popup
 - **Move Overlay:** Arrow keys (↑, ↓, ←, →)
 - **Move Faster:** Shift + Arrow keys
 - **Focus Overlay:** Click on the overlay
@@ -72,18 +75,18 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 ## Permissions
 
-- `activeTab`: To inject the grid overlay, rulers, and guides into the current page.
-- `storage`: To save your grid and guide settings, overlay position, and accessibility preferences.
-- `scripting`: To programmatically inject scripts (such as the content script) into the current page for grid and guide functionality.
+- `activeTab`: To inject the grid overlay into the current page.
+- `storage`: To save your grid settings and overlay position.
+- `scripting`: To programmatically inject the content script and styles into the current page.
 
 ---
 
 ## Screenshots
 
-<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/screenshot-1_ehcl38.png">   
-<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1751006718/screenshot-2_aijoxt.png">   
-<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-4_i24771.png">   
-<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-3_dxdnyd.png">   
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923154/screenshot-1_ehcl38.png">
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1751006718/screenshot-2_aijoxt.png">
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-4_i24771.png">
+<img src="https://res.cloudinary.com/dd1qlozhf/image/upload/v1750923155/screenshot-3_dxdnyd.png">
 
 ---
 

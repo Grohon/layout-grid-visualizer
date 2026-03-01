@@ -19,6 +19,7 @@ body {
 
   --color-brand-blue: #1a73e8;
   --color-brand-blue-dark: #1557b0;
+  --color-brand-red: #d93025;
   --color-gray-medium: #cccccc;
 
   --popup-bg: var(--color-dark-blue);
@@ -92,6 +93,24 @@ button:hover {
   display: none;
 }
 
+/* Opacity slider + number combo */
+.opacity-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.opacity-input input[type="range"] {
+  flex: 1;
+  accent-color: var(--color-brand-blue);
+}
+
+.opacity-input input[type="number"] {
+  width: 4rem;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
 .toggle {
   position: relative;
   display: inline-block;
@@ -138,4 +157,31 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   translate: var(--slider-size) -50%;
+}
+
+input.invalid-field {
+  border: 1px solid var(--color-brand-red);
+  outline: 1px solid var(--color-brand-red);
+}
+
+.input-tooltip {
+  position: absolute;
+  background: var(--color-brand-red);
+  color: var(--color-white);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 10000;
+  right: 0.5rem;
+  top: 100%;
+  margin-top: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: fadein 0.2s;
+}
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

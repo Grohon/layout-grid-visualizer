@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Layout Grid Visualizer",
-  "version": "1.1",
+  "version": "1.2.0",
   "description": "A Chrome extension to visualize and customize grid layouts on webpages",
+  "author": "Abu Foysal",
   "permissions": [
     "activeTab",
     "storage",
@@ -16,5 +17,17 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "toggle-grid": {
+      "suggested_key": {
+        "default": "Alt+Shift+G",
+        "mac": "Alt+Shift+G"
+      },
+      "description": "Toggle grid overlay"
+    }
   }
 }

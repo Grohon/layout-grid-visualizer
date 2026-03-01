@@ -20,19 +20,19 @@ let settings = {
 };
 let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
-let gridClickable = true; // default
+let gridClickable = true;
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
   const currentSplitColumns = settings.splitColumns;
   const newSplitColumns = newSettings.splitColumns;
   const splitColumnsChanged = (
-    (Array.isArray(currentSplitColumns) && Array.isArray(newSplitColumns) && 
+    (Array.isArray(currentSplitColumns) && Array.isArray(newSplitColumns) &&
      JSON.stringify(currentSplitColumns) !== JSON.stringify(newSplitColumns)) ||
     (!Array.isArray(currentSplitColumns) && Array.isArray(newSplitColumns)) ||
     (Array.isArray(currentSplitColumns) && !Array.isArray(newSplitColumns))
   );
-  
+
   // Check if we're switching between split and uniform modes
   const currentIsSplit = Array.isArray(settings.splitColumns) && settings.splitColumns.length > 0;
   const newIsSplit = Array.isArray(newSettings.splitColumns) && newSettings.splitColumns.length > 0;
@@ -46,18 +46,20 @@ function settingsAffectStructure(newSettings) {
     // For uniform mode, check columns
     (newSettings.columns !== settings.columns && !Array.isArray(newSettings.splitColumns))
   );
-  
+
   return result;
 }
 
 // Load position from storage
 chrome.storage.sync.get({ gridOverlayX: null, gridOverlayY: null }, (pos) => {
+  if (chrome.runtime.lastError) return;
   overlayPosition.x = pos.gridOverlayX;
   overlayPosition.y = pos.gridOverlayY;
 });
 
 // Load gridClickable state from storage on script load
 chrome.storage.sync.get({ gridClickable: true }, (result) => {
+  if (chrome.runtime.lastError) return;
   gridClickable = result.gridClickable;
   if (gridOverlay) {
     gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
@@ -148,19 +150,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         gridColor: '#1a73e8',
         opacity: 0.3
       }, (storedSettings) => {
+        if (chrome.runtime.lastError) return;
         settings = { ...settings, ...storedSettings };
         createGrid();
         isGridVisible = true;
-        sendResponse(); // Respond after async operation
+        sendResponse();
       });
       return true; // Indicate async response
     } else {
       removeGrid();
       isGridVisible = false;
-      sendResponse(); // Synchronous response
+      sendResponse();
     }
   } else if (request.action === 'updateGrid') {
-    // Synchronous: update grid settings and respond
     const needsRebuild = settingsAffectStructure(request.settings);
 
     // Properly merge settings, handling undefined values
@@ -181,21 +183,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         updateGridStyles();
       }
     }
-    sendResponse(); // Synchronous response
+    sendResponse();
   } else if (request.action === 'getGridState') {
-    sendResponse({ isVisible: isGridVisible }); // Synchronous response with data
+    sendResponse({ isVisible: isGridVisible });
   } else if (request.action === 'centerGrid') {
     overlayPosition.x = null;
     overlayPosition.y = null;
     updateGridStyles();
     chrome.storage.sync.set({ gridOverlayX: null, gridOverlayY: null });
-    sendResponse(); // Synchronous response
+    sendResponse();
   } else if (request.action === 'setGridClickable') {
     gridClickable = request.value;
     if (gridOverlay) {
       gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
     }
-    sendResponse(); // Synchronous response
+    sendResponse();
   }
   // Always return true to indicate we may respond asynchronously
   return true;
@@ -243,8 +245,6 @@ function createGrid() {
   document.body.appendChild(gridOverlay);
   makeDraggable(gridOverlay);
   makeKeyboardMovable(gridOverlay);
-  // Apply clickability state
-  gridOverlay.style.pointerEvents = gridClickable ? 'auto' : 'none';
 }
 
 function updateGridStyles() {
@@ -267,9 +267,10 @@ function updateGridStyles() {
     width: ${settings.gridWidth}px;
     height: 100vh;
     display: flex;
-    z-index: 9999;
+    z-index: 100000;
     cursor: move;
     background: none;
+    pointer-events: ${gridClickable ? 'auto' : 'none'};
   `;
 
   const columns = gridOverlay.getElementsByClassName('grid-column');
