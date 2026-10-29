@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Layout Grid Visualizer",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "A Chrome extension to visualize and customize grid layouts on webpages",
+  "minimum_chrome_version": "100",
   "author": "Abu Foysal",
   "permissions": [
     "activeTab",

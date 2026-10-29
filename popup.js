@@ -16,10 +16,11 @@ function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
-// Opacity is stored as a decimal (0-1) but shown in the UI as a percentage (0-100).
-// Percent keeps up to two decimals so legacy fractional values round-trip cleanly.
+// Opacity is stored as a decimal (0-1) but shown in the UI as a whole percentage.
+// Legacy fractional values round up so they never appear more transparent than saved.
 function toPercent(decimal) {
-  return Math.round(decimal * 10000) / 100;
+  // Avoid floating-point noise (0.3 * 100 = 30.000000000000004)
+  return Math.ceil(Number((decimal * 100).toFixed(6)));
 }
 
 function toDecimal(percent) {
@@ -169,6 +170,7 @@ function restoreSplitGridUI() {
       input.type = 'number';
       input.className = 'split-column';
       input.min = '1';
+      input.setAttribute('aria-label', `Split column ${i + 1} value`);
       input.value = splitColumnValues[i];
       input.addEventListener('input', debounce(() => window.handleSplitInput(i, input), 100));
       formGridColumns.appendChild(input);
@@ -440,7 +442,7 @@ function saveSettings() {
   }
 
   // If all valid, update values and grid
-  opacityPercent = Math.round(clamp(opacityPercent, 0, 100) * 100) / 100;
+  opacityPercent = Math.round(clamp(opacityPercent, 0, 100));
   el.gridWidth.value = gridWidth;
   el.columns.value = columns;
   el.opacity.value = opacityPercent;
@@ -584,6 +586,7 @@ function showTooltip(input, message) {
 
   const tooltip = document.createElement('div');
   tooltip.className = 'input-tooltip';
+  tooltip.setAttribute('role', 'alert');
   tooltip.textContent = message;
 
   formGroup.appendChild(tooltip);

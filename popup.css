@@ -105,25 +105,9 @@ button:hover {
   accent-color: var(--color-brand-blue);
 }
 
-.opacity-number {
-  position: relative;
-  display: flex;
-  flex-shrink: 0;
-}
-
 .opacity-input input[type="number"] {
-  width: 5.25rem;
-  padding-right: 1.6rem;
-}
-
-.opacity-unit {
-  position: absolute;
-  top: 50%;
-  right: 1.2rem;
-  transform: translateY(-50%);
-  color: #5f6368;
-  font-size: 0.75rem;
-  pointer-events: none;
+  width: 4rem;
+  flex-shrink: 0;
 }
 
 /* Toggle switch */
@@ -169,6 +153,11 @@ button:hover {
 
 input:checked + .slider {
   background-color: var(--color-brand-blue);
+}
+
+.toggle input:focus-visible + .slider {
+  outline: 2px solid var(--color-white);
+  outline-offset: 2px;
 }
 
 input:checked + .slider:before {

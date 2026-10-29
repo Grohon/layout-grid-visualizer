@@ -13,7 +13,7 @@ const JS_FILES = ['background.js', 'content.js', 'popup.js'];
 const CSS_FILES = ['grid-overlay.css', 'popup.css'];
 
 // Files to copy as-is
-const COPY_FILES = ['manifest.json', 'popup.html'];
+const COPY_FILES = ['popup.html'];
 const COPY_DIRS = ['icons'];
 
 function cleanDist() {
@@ -36,6 +36,20 @@ function copyDir(srcDir, destDir) {
       copyFile(srcPath, destPath);
     }
   }
+}
+
+function copyManifest() {
+  const srcPath = path.join(__dirname, 'manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(srcPath, 'utf8'));
+
+  if (manifest.version !== VERSION) {
+    throw new Error(
+      `manifest.json version (${manifest.version}) does not match package.json version (${VERSION}).`
+    );
+  }
+
+  copyFile(srcPath, path.join(DIST, 'manifest.json'));
+  console.log(`  manifest.json (v${VERSION})`);
 }
 
 async function minifyJS(file) {
@@ -139,6 +153,7 @@ async function build() {
     copyFile(path.join(__dirname, file), path.join(DIST, file));
     console.log(`  ${file}`);
   }
+  copyManifest();
   for (const dir of COPY_DIRS) {
     copyDir(path.join(__dirname, dir), path.join(DIST, dir));
     console.log(`  ${dir}/`);

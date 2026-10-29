@@ -11,12 +11,12 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 
 | Feature                        | Description                                                                                 |
 |-------------------------------|---------------------------------------------------------------------------------------------|
-| **Customizable Grid Settings** | Set grid width, number of columns, gutter size, color, and opacity.                         |
+| **Customizable Grid Settings** | Set grid width, number of columns, gutter size, color, and opacity (shown as a percentage). |
 | **Split Grid Mode**            | Define custom column widths for advanced grid layouts.                                       |
 | **Grid Clickability Toggle**   | Make the overlay grid interactive or pass-through for page interaction.                      |
 | **Keyboard Navigation**        | Move the overlay with arrow keys (Shift+Arrow for larger steps).                            |
 | **Keyboard Shortcut**          | Toggle grid overlay with `Alt+Shift+G` — no popup needed.                                   |
-| **Persistent Overlay Position**| Overlay position is saved and restored per tab.                                             |
+| **Persistent Overlay Position**| Overlay position is saved and restored across sessions (shared across tabs).              |
 | **Auto-correction & Tooltips** | Invalid values are auto-corrected with tooltips explaining corrections.                      |
 | **Opacity Slider**             | Intuitive range slider for adjusting grid opacity.                                           |
 | **Accessibility**              | Focusable overlay, ARIA labels, and full keyboard navigation.                                |
@@ -27,6 +27,8 @@ Layout Grid Visualizer is a Chrome extension that helps web developers and desig
 ---
 
 ## Installation
+
+Requires Chrome 100 or newer.
 
 ### Install from Chrome Web Store
 

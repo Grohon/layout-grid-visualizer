@@ -1,14 +1,21 @@
 (function() {
-if (window.__layoutGridVisualizerInjected) {
-  return;
+// Re-injection replaces an older instance (for example after an extension reload)
+if (typeof window.__layoutGridVisualizerCleanup === 'function') {
+  try {
+    window.__layoutGridVisualizerCleanup();
+  } catch {
+    // Old instance is stale — ignore cleanup failures
+  }
 }
-window.__layoutGridVisualizerInjected = true;
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+function handlePingMessage(msg, sender, sendResponse) {
   if (msg.type === "ping") {
     sendResponse({ status: "alive" });
   }
-});
+}
+
+chrome.runtime.onMessage.addListener(handlePingMessage);
+chrome.runtime.onMessage.addListener(handleRuntimeMessage);
 
 let gridOverlay = null;
 let settings = {
@@ -25,6 +32,28 @@ let cleanupDragListeners = null;
 
 const MAX_COLUMNS = 100;
 const MAX_SPLIT_COLUMNS = 6;
+
+// Largest gutter that still leaves every column with a positive width.
+function getMaxGutter(gridWidth, columns, splitColumns) {
+  if (!(gridWidth > 0)) return 0;
+
+  if (Array.isArray(splitColumns) && splitColumns.length > 0) {
+    const total = splitColumns.reduce((sum, ratio) => sum + ratio, 0);
+    if (!(total > 0)) return 0;
+
+    let max = Infinity;
+    for (const ratio of splitColumns) {
+      const remaining = total - ratio;
+      if (remaining > 0) {
+        max = Math.min(max, (gridWidth * ratio) / remaining);
+      }
+    }
+    return Number.isFinite(max) ? Math.ceil(max) - 1 : Math.floor(gridWidth) - 1;
+  }
+
+  if (columns <= 1) return Math.floor(gridWidth) - 1;
+  return Math.floor((gridWidth - 1) / (columns - 1));
+}
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
@@ -160,7 +189,7 @@ function makeKeyboardMovable(element) {
   });
 }
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+function handleRuntimeMessage(request, sender, sendResponse) {
   if (request.action === 'toggleGrid') {
     if (!isGridVisible) {
       // Async: fetch settings and create grid, then respond
@@ -233,7 +262,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   // Always return true to indicate we may respond asynchronously
   return true;
-});
+}
 
 function createGrid() {
   if (gridOverlay) removeGrid();
@@ -243,6 +272,10 @@ function createGrid() {
   gridOverlay.id = 'layout-grid-visualizer';
   gridOverlay.style.cursor = 'move';
   gridOverlay.tabIndex = 0; // Make focusable
+  gridOverlay.setAttribute('role', 'group');
+  gridOverlay.setAttribute('aria-label', 'Layout grid overlay. Use arrow keys to move, Shift plus arrow keys for larger steps.');
+  gridOverlay.setAttribute('aria-roledescription', 'Draggable layout grid');
+  gridOverlay.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown ArrowLeft ArrowRight');
 
   // Set up columns
   let colWidths = [];
@@ -258,18 +291,30 @@ function createGrid() {
   if (splitColumns.length > 0) {
     // Split grid mode
     settings.splitColumns = splitColumns;
-    const total = splitColumns.reduce((a, b) => a + b, 0);
     numCols = splitColumns.length;
-    const availableWidth = settings.gridWidth + settings.gutterSize;
-    colWidths = splitColumns.map(val => availableWidth * (val / total) - settings.gutterSize);
   } else {
     // Uniform grid mode
     delete settings.splitColumns;
     numCols = parseInt(settings.columns, 10);
     if (!Number.isFinite(numCols) || numCols < 1) numCols = 12;
     numCols = Math.min(numCols, MAX_COLUMNS);
-    const totalGutter = settings.gutterSize * (numCols - 1);
-    const availableWidth = settings.gridWidth - totalGutter;
+  }
+
+  // Guard against legacy or hand-edited settings that cannot fit on screen.
+  const gridWidth = Number(settings.gridWidth) > 0 ? Number(settings.gridWidth) : 1320;
+  const requestedGutter = Number(settings.gutterSize) > 0 ? Number(settings.gutterSize) : 0;
+  const maxGutter = getMaxGutter(gridWidth, numCols, splitColumns);
+  const gutterSize = Math.max(0, Math.min(requestedGutter, maxGutter));
+  settings.gridWidth = gridWidth;
+  settings.gutterSize = gutterSize;
+
+  if (splitColumns.length > 0) {
+    const total = splitColumns.reduce((a, b) => a + b, 0);
+    const availableWidth = gridWidth + gutterSize;
+    colWidths = splitColumns.map(val => availableWidth * (val / total) - gutterSize);
+  } else {
+    const totalGutter = gutterSize * (numCols - 1);
+    const availableWidth = gridWidth - totalGutter;
     const columnWidth = availableWidth / numCols;
     colWidths = Array(numCols).fill(columnWidth);
   }
@@ -277,8 +322,9 @@ function createGrid() {
   for (let i = 0; i < numCols; i++) {
     const column = document.createElement('div');
     column.className = 'grid-column';
+    column.setAttribute('aria-hidden', 'true');
     column.style.width = `${colWidths[i]}px`;
-    column.style.marginRight = i < numCols - 1 ? `${settings.gutterSize}px` : '0';
+    column.style.marginRight = i < numCols - 1 ? `${gutterSize}px` : '0';
     gridOverlay.appendChild(column);
   }
 
@@ -332,4 +378,18 @@ function removeGrid() {
   gridOverlay = null;
   isGridVisible = false;
 }
+
+window.__layoutGridVisualizerCleanup = () => {
+  try {
+    removeGrid();
+  } catch {
+    // Ignore cleanup errors from a stale extension context
+  }
+  try {
+    chrome.runtime.onMessage.removeListener(handlePingMessage);
+    chrome.runtime.onMessage.removeListener(handleRuntimeMessage);
+  } catch {
+    // Ignore cleanup errors from a stale extension context
+  }
+};
 })();
