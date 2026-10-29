@@ -13,6 +13,15 @@ function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
+// Opacity is stored as a decimal (0-1) but shown in the UI as a percentage (0-100)
+function toPercent(decimal) {
+  return Math.round(decimal * 100);
+}
+
+function toDecimal(percent) {
+  return percent / 100;
+}
+
 // Debounce helper
 function debounce(fn, delay) {
   let timer = null;
@@ -181,8 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
     el.gridWidth.value = settings.gridWidth;
     el.gutterSize.value = settings.gutterSize;
     el.gridColor.value = settings.gridColor;
-    el.opacity.value = settings.opacity;
-    if (el.opacityRange) el.opacityRange.value = settings.opacity;
+    el.opacity.value = toPercent(settings.opacity);
+    if (el.opacityRange) el.opacityRange.value = toPercent(settings.opacity);
 
     // Set split grid state and values first
     splitGridState = settings.splitGridState;
@@ -196,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
       gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
       gridColor: el.gridColor.value || DEFAULTS.gridColor,
-      opacity: clamp(parseFloat(el.opacity.value), 0, 1)
+      opacity: toDecimal(clamp(parseFloat(el.opacity.value) || 0, 0, 100))
     };
 
     if (splitGridState) {
@@ -271,7 +280,7 @@ function saveSettings() {
   let columns = parseInt(el.columns.value);
   let gutterSize = parseInt(el.gutterSize.value);
   let gridColor = el.gridColor.value || DEFAULTS.gridColor;
-  let opacity = clamp(parseFloat(el.opacity.value), 0, 1);
+  let opacityPercent = parseFloat(el.opacity.value);
 
   let valid = true;
   let corrections = [];
@@ -327,14 +336,14 @@ function saveSettings() {
     el.columns.classList.remove('invalid-field');
   }
   // Opacity
-  if (el.opacity.value === '' || opacity < 0 || opacity > 1 || isNaN(opacity)) {
+  if (el.opacity.value === '' || opacityPercent < 0 || opacityPercent > 100 || isNaN(opacityPercent)) {
     el.opacity.classList.add('invalid-field');
     valid = false;
-    showTooltip(el.opacity, 'Opacity must be between 0 and 1.');
+    showTooltip(el.opacity, 'Opacity must be between 0 and 100.');
     corrections.push(() => {
-      opacity = DEFAULTS.opacity;
-      el.opacity.value = opacity;
-      if (el.opacityRange) el.opacityRange.value = opacity;
+      opacityPercent = toPercent(DEFAULTS.opacity);
+      el.opacity.value = opacityPercent;
+      if (el.opacityRange) el.opacityRange.value = opacityPercent;
       el.opacity.classList.remove('invalid-field');
     });
   } else {
@@ -355,10 +364,11 @@ function saveSettings() {
   }
 
   // If all valid, update values and grid
+  opacityPercent = Math.round(clamp(opacityPercent, 0, 100));
   el.gridWidth.value = gridWidth;
   el.columns.value = columns;
-  el.opacity.value = opacity;
-  if (el.opacityRange) el.opacityRange.value = opacity;
+  el.opacity.value = opacityPercent;
+  if (el.opacityRange) el.opacityRange.value = opacityPercent;
 
   // Update splitColumnValues first, then create settings object
   if (splitGridState) {
@@ -368,7 +378,7 @@ function saveSettings() {
   }
 
   // Create settings object with updated values
-  let settings = { gridWidth, gutterSize, gridColor, opacity };
+  let settings = { gridWidth, gutterSize, gridColor, opacity: toDecimal(opacityPercent) };
   if (splitGridState) {
     settings.splitColumns = splitColumnValues;
     settings.columns = undefined;
@@ -391,7 +401,7 @@ async function toggleGrid() {
     gridWidth: parseInt(el.gridWidth.value) || DEFAULTS.gridWidth,
     gutterSize: parseInt(el.gutterSize.value) || DEFAULTS.gutterSize,
     gridColor: el.gridColor.value || DEFAULTS.gridColor,
-    opacity: clamp(parseFloat(el.opacity.value), 0, 1)
+    opacity: toDecimal(clamp(parseFloat(el.opacity.value) || 0, 0, 100))
   };
 
   if (splitGridState) {
@@ -437,8 +447,8 @@ async function resetToDefaults() {
   el.columns.value = DEFAULTS.columns;
   el.gutterSize.value = DEFAULTS.gutterSize;
   el.gridColor.value = DEFAULTS.gridColor;
-  el.opacity.value = DEFAULTS.opacity;
-  if (el.opacityRange) el.opacityRange.value = DEFAULTS.opacity;
+  el.opacity.value = toPercent(DEFAULTS.opacity);
+  if (el.opacityRange) el.opacityRange.value = toPercent(DEFAULTS.opacity);
   el.gridClickable.checked = DEFAULTS.gridClickable;
 
   centerGrid();
