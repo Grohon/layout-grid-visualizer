@@ -2,78 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="color-scheme" content="dark">
   <title>Layout Grid Visualizer</title>
 
   <link rel="stylesheet" href="popup.css">
 </head>
 
 <body>
-  <div class="form-group">
-    <label for="gridWidth">Grid Width (px)</label>
-    <input type="number" id="gridWidth" value="1320" min="1">
-  </div>
+  <header class="app-header">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <div class="brand-copy">
+      <h1>Layout Grid</h1>
+      <p>Visualizer</p>
+    </div>
+  </header>
 
-  <div class="form-group">
-    <label for="columns">Number of Columns</label>
+  <main class="form-grid">
+    <div class="form-group">
+      <label for="gridWidth">Grid Width (px)</label>
+      <input type="number" id="gridWidth" value="1320" min="1">
+    </div>
 
-    <div class="w-form-grid-columns">
-      <div class="form-grid-columns">
-        <input type="number" id="columns" value="12" min="1">
+    <div class="form-group">
+      <label for="gutterSize">Gutter (px)</label>
+      <input type="number" id="gutterSize" value="32" min="1">
+    </div>
+
+    <div class="form-group span-2">
+      <label for="columns">Columns</label>
+
+      <div class="w-form-grid-columns">
+        <div class="form-grid-columns">
+          <input type="number" id="columns" value="12" min="1">
+        </div>
+
+        <div class="form-grid-buttons">
+          <button id="addColumn" aria-label="Add Column" title="Add Column Grid">&#43;</button>
+          <button id="removeColumn" aria-label="Remove Column" title="Remove Column Grid">&ndash;</button>
+        </div>
       </div>
+    </div>
 
-      <div class="form-grid-buttons">
-        <button id="addColumn" aria-label="Add Column" title="Add Column Grid">&#43;</button>
-        <button id="removeColumn" aria-label="Remove Column" title="Remove Column Grid">&ndash;</button>
+    <div class="form-group span-2 inline-group">
+      <label for="gridColor">Grid Color</label>
+      <div class="color-input">
+        <input type="color" id="gridColor" value="#1a73e8">
       </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="gutterSize">Gutter Size (px)</label>
-    <input type="number" id="gutterSize" value="32" min="1">
-  </div>
-
-  <div class="form-group">
-    <label for="gridColor">Grid Color</label>
-    <div class="color-input">
-      <input type="color" id="gridColor" value="#1a73e8">
+    <div class="form-group span-2">
+      <label for="opacity">Grid Opacity (%)</label>
+      <div class="opacity-input">
+        <input type="range" id="opacityRange" min="0" max="100" step="1" value="30" aria-label="Grid opacity percentage">
+        <input type="number" id="opacity" value="30" min="0" max="100" step="1">
+      </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="opacity">Grid Opacity (%)</label>
-    <div class="opacity-input">
-      <input type="range" id="opacityRange" min="0" max="100" step="1" value="30" aria-label="Grid opacity percentage">
-      <input type="number" id="opacity" value="30" min="0" max="100" step="1">
+    <div class="form-group span-2 action-group">
+      <button id="toggleGrid" aria-label="Show or hide grid" title="Show or hide the grid overlay">Show Grid</button>
+
+      <div class="button-row">
+        <button id="centerGrid" class="secondary" aria-label="Center grid" title="Center the grid overlay">Center</button>
+        <button id="splitGrid" class="secondary" aria-label="Split grid" title="Split the grid overlay">Split</button>
+        <button id="resetGrid" class="secondary" aria-label="Reset to defaults" title="Reset all fields to default values">Reset</button>
+      </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <button id="toggleGrid" aria-label="Show or hide grid" title="Show or hide the grid overlay">Show Grid</button>
-  </div>
+    <div class="form-group span-2">
+      <label class="switch-row">
+        <span>Grid clickable</span>
 
-  <div class="form-group">
-    <button id="centerGrid" aria-label="Center grid" title="Center the grid overlay">Center Grid</button>
-  </div>
-
-  <div class="form-group">
-    <button id="splitGrid" aria-label="Split grid" title="Split the grid overlay">Split Grid</button>
-  </div>
-
-  <div class="form-group">
-    <button id="resetGrid" aria-label="Reset to defaults" title="Reset all fields to default values">Reset to Defaults</button>
-  </div>
-
-  <div class="form-group">
-    <label>
-      <span class="toggle">
-        <input type="checkbox" id="gridClickable" checked>
-        <span class="slider"></span>
-      </span>
-
-      Grid clickable
-    </label>
-  </div>
+        <span class="toggle">
+          <input type="checkbox" id="gridClickable" checked>
+          <span class="slider"></span>
+        </span>
+      </label>
+    </div>
+  </main>
 
   <script src="popup.js"></script>
 </body>

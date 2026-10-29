@@ -176,10 +176,18 @@ function restoreSplitGridUI() {
       formGridColumns.appendChild(input);
     }
     if (formGridButtons) formGridButtons.style.display = 'flex';
-    if (el.splitGrid) el.splitGrid.textContent = 'Uniform Grid';
+    if (el.splitGrid) {
+      el.splitGrid.textContent = 'Uniform';
+      el.splitGrid.setAttribute('aria-label', 'Use uniform grid');
+      el.splitGrid.title = 'Use uniform grid';
+    }
   } else {
     if (formGridButtons) formGridButtons.style.display = 'none';
-    if (el.splitGrid) el.splitGrid.textContent = 'Split Grid';
+    if (el.splitGrid) {
+      el.splitGrid.textContent = 'Split';
+      el.splitGrid.setAttribute('aria-label', 'Use split grid');
+      el.splitGrid.title = 'Use split grid';
+    }
   }
   updateAddRemoveListeners();
 }
@@ -554,7 +562,7 @@ async function resetToDefaults() {
 
   // Update the split grid button text
   if (el.splitGrid) {
-    el.splitGrid.textContent = 'Split Grid';
+    el.splitGrid.textContent = 'Split';
   }
 
   // Call restoreSplitGridUI to properly handle the UI state and event listeners
