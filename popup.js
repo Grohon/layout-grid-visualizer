@@ -13,9 +13,10 @@ function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
 
-// Opacity is stored as a decimal (0-1) but shown in the UI as a percentage (0-100)
+// Opacity is stored as a decimal (0-1) but shown in the UI as a percentage (0-100).
+// Percent keeps up to two decimals so legacy fractional values round-trip cleanly.
 function toPercent(decimal) {
-  return Math.round(decimal * 100);
+  return Math.round(decimal * 10000) / 100;
 }
 
 function toDecimal(percent) {
@@ -339,7 +340,7 @@ function saveSettings() {
   if (el.opacity.value === '' || opacityPercent < 0 || opacityPercent > 100 || isNaN(opacityPercent)) {
     el.opacity.classList.add('invalid-field');
     valid = false;
-    showTooltip(el.opacity, 'Opacity must be between 0 and 100.');
+    showTooltip(el.opacity, 'Opacity must be between 0 and 100%.');
     corrections.push(() => {
       opacityPercent = toPercent(DEFAULTS.opacity);
       el.opacity.value = opacityPercent;
@@ -364,7 +365,7 @@ function saveSettings() {
   }
 
   // If all valid, update values and grid
-  opacityPercent = Math.round(clamp(opacityPercent, 0, 100));
+  opacityPercent = Math.round(clamp(opacityPercent, 0, 100) * 100) / 100;
   el.gridWidth.value = gridWidth;
   el.columns.value = columns;
   el.opacity.value = opacityPercent;
