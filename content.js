@@ -21,6 +21,10 @@ let settings = {
 let overlayPosition = { x: null, y: null };
 let isGridVisible = false;
 let gridClickable = true;
+let cleanupDragListeners = null;
+
+const MAX_COLUMNS = 100;
+const MAX_SPLIT_COLUMNS = 6;
 
 function settingsAffectStructure(newSettings) {
   // Check if splitColumns changed (for split mode)
@@ -67,10 +71,15 @@ chrome.storage.sync.get({ gridClickable: true }, (result) => {
 });
 
 function makeDraggable(element) {
+  if (cleanupDragListeners) {
+    cleanupDragListeners();
+    cleanupDragListeners = null;
+  }
+
   let isDragging = false;
   let startX, startY, origX, origY;
 
-  element.addEventListener('mousedown', (e) => {
+  const handleMouseDown = (e) => {
     isDragging = true;
     startX = e.clientX;
     startY = e.clientY;
@@ -84,18 +93,18 @@ function makeDraggable(element) {
       origY = rect.top;
     }
     document.body.style.userSelect = 'none';
-  });
+  };
 
-  window.addEventListener('mousemove', (e) => {
+  const handleMouseMove = (e) => {
     if (!isDragging) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     overlayPosition.x = origX + dx;
     overlayPosition.y = origY + dy;
     updateGridStyles();
-  });
+  };
 
-  window.addEventListener('mouseup', () => {
+  const handleMouseUp = () => {
     if (isDragging) {
       isDragging = false;
       document.body.style.userSelect = '';
@@ -104,7 +113,19 @@ function makeDraggable(element) {
         gridOverlayY: overlayPosition.y
       });
     }
-  });
+  };
+
+  element.addEventListener('mousedown', handleMouseDown);
+  window.addEventListener('mousemove', handleMouseMove);
+  window.addEventListener('mouseup', handleMouseUp);
+
+  cleanupDragListeners = () => {
+    element.removeEventListener('mousedown', handleMouseDown);
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
+    document.body.style.userSelect = '';
+    isDragging = false;
+  };
 }
 
 function makeKeyboardMovable(element) {
@@ -148,10 +169,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         columns: 12,
         gutterSize: 32,
         gridColor: '#1a73e8',
-        opacity: 0.3
+        opacity: 0.3,
+        splitGridState: false,
+        splitColumnValues: [12]
       }, (storedSettings) => {
-        if (chrome.runtime.lastError) return;
-        settings = { ...settings, ...storedSettings };
+        if (chrome.runtime.lastError) {
+          sendResponse();
+          return;
+        }
+        const { splitGridState, splitColumnValues, ...baseSettings } = storedSettings;
+        settings = { ...settings, ...baseSettings };
+        if (splitGridState && Array.isArray(splitColumnValues) && splitColumnValues.length > 0) {
+          settings.splitColumns = splitColumnValues;
+        } else {
+          delete settings.splitColumns;
+        }
         createGrid();
         isGridVisible = true;
         sendResponse();
@@ -216,17 +248,26 @@ function createGrid() {
   let colWidths = [];
   let numCols = 0;
 
-  if (Array.isArray(settings.splitColumns) && settings.splitColumns.length > 0 && settings.splitColumns.some(v => Number(v) > 0)) {
+  const splitColumns = Array.isArray(settings.splitColumns)
+    ? settings.splitColumns
+        .map(Number)
+        .filter(value => Number.isFinite(value) && value > 0)
+        .slice(0, MAX_SPLIT_COLUMNS)
+    : [];
+
+  if (splitColumns.length > 0) {
     // Split grid mode
-    const splitColumns = settings.splitColumns.map(Number);
+    settings.splitColumns = splitColumns;
     const total = splitColumns.reduce((a, b) => a + b, 0);
     numCols = splitColumns.length;
     const availableWidth = settings.gridWidth + settings.gutterSize;
     colWidths = splitColumns.map(val => availableWidth * (val / total) - settings.gutterSize);
   } else {
     // Uniform grid mode
-    numCols = parseInt(settings.columns);
+    delete settings.splitColumns;
+    numCols = parseInt(settings.columns, 10);
     if (!Number.isFinite(numCols) || numCols < 1) numCols = 12;
+    numCols = Math.min(numCols, MAX_COLUMNS);
     const totalGutter = settings.gutterSize * (numCols - 1);
     const availableWidth = settings.gridWidth - totalGutter;
     const columnWidth = availableWidth / numCols;
@@ -281,6 +322,10 @@ function updateGridStyles() {
 }
 
 function removeGrid() {
+  if (cleanupDragListeners) {
+    cleanupDragListeners();
+    cleanupDragListeners = null;
+  }
   if (gridOverlay && gridOverlay.parentNode) {
     gridOverlay.parentNode.removeChild(gridOverlay);
   }

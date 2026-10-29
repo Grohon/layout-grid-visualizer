@@ -9,6 +9,9 @@ const DEFAULTS = {
   splitColumnValues: [12]
 };
 
+const MAX_COLUMNS = 100;
+const MAX_SPLIT_COLUMNS = 6;
+
 function clamp(val, min, max) {
   return Math.max(min, Math.min(max, val));
 }
@@ -32,6 +35,38 @@ function debounce(fn, delay) {
   };
 }
 
+const saveSettingsDebounced = debounce(saveSettings, 250);
+
+function cancelPendingCorrection() {
+  if (correctionTimer !== null) {
+    clearTimeout(correctionTimer);
+    correctionTimer = null;
+  }
+}
+
+// Largest gutter that still leaves every column with a positive width.
+// Returns 0 when no positive gutter fits.
+function getMaxGutter(gridWidth, columns, splitRatios) {
+  if (!(gridWidth > 0)) return 0;
+
+  if (Array.isArray(splitRatios) && splitRatios.length > 0) {
+    const total = splitRatios.reduce((sum, ratio) => sum + ratio, 0);
+    if (!(total > 0)) return 0;
+
+    let max = Infinity;
+    for (const ratio of splitRatios) {
+      const remaining = total - ratio;
+      if (remaining > 0) {
+        max = Math.min(max, (gridWidth * ratio) / remaining);
+      }
+    }
+    return Number.isFinite(max) ? Math.ceil(max) - 1 : Math.floor(gridWidth) - 1;
+  }
+
+  if (columns <= 1) return Math.floor(gridWidth) - 1;
+  return Math.floor((gridWidth - 1) / (columns - 1));
+}
+
 // Cache DOM elements
 const el = {
   gridWidth: null,
@@ -50,6 +85,7 @@ const el = {
 let currentGridVisible = false;
 let splitGridState = false;
 let splitColumnValues = [DEFAULTS.columns];
+let correctionTimer = null;
 
 // --- Helper to send a message to the active tab's content script ---
 // Ensures content script + CSS are injected, then sends the message.
@@ -123,7 +159,7 @@ function restoreSplitGridUI() {
     } else {
       splitColumnValues = [val];
     }
-    saveSettings();
+    saveSettingsDebounced();
   };
 
   if (splitGridState) {
@@ -156,7 +192,7 @@ function updateAddRemoveListeners() {
   removeColumnBtn.onclick = null;
   if (splitGridState) {
     addColumnBtn.onclick = () => {
-      if (splitColumnValues.length < 6) {
+      if (splitColumnValues.length < MAX_SPLIT_COLUMNS) {
         splitColumnValues.push(1);
         restoreSplitGridUI();
         saveSettings();
@@ -196,7 +232,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set split grid state and values first
     splitGridState = settings.splitGridState;
-    splitColumnValues = Array.isArray(settings.splitColumnValues) && settings.splitColumnValues.length > 0 ? settings.splitColumnValues : [settings.columns];
+    const storedSplitValues = Array.isArray(settings.splitColumnValues) && settings.splitColumnValues.length > 0
+      ? settings.splitColumnValues
+      : [settings.columns];
+    splitColumnValues = storedSplitValues
+      .slice(0, MAX_SPLIT_COLUMNS)
+      .map(value => Math.max(1, parseInt(value) || 1));
+    if (splitColumnValues.length === 0) splitColumnValues = [DEFAULTS.columns];
 
     // Now restore the UI which will set the #columns value correctly
     restoreSplitGridUI();
@@ -229,15 +271,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // All main inputs (excluding #columns since it's handled in restoreSplitGridUI)
   [el.gridWidth, el.gutterSize, el.opacity].forEach(input => {
-    input.addEventListener('input', debounce(saveSettings, 100));
+    input.addEventListener('input', saveSettingsDebounced);
   });
-  el.gridColor.addEventListener('input', debounce(saveSettings, 100));
+  el.gridColor.addEventListener('input', saveSettingsDebounced);
 
   // Opacity range slider sync
   if (el.opacityRange) {
     el.opacityRange.addEventListener('input', () => {
       el.opacity.value = el.opacityRange.value;
-      saveSettings();
+      saveSettingsDebounced();
     });
     // Also sync the range when the number input changes
     el.opacity.addEventListener('input', () => {
@@ -257,8 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Helper for split column field changes
   window.handleSplitInput = function(idx, input) {
-    splitColumnValues[idx] = parseInt(input.value) || 1;
-    saveSettings();
+    const val = Math.max(1, parseInt(input.value) || 1);
+    input.value = val;
+    splitColumnValues[idx] = val;
+    saveSettingsDebounced();
   };
 
   updateAddRemoveListeners();
@@ -273,15 +317,21 @@ function getSplitColumnsArray() {
   const formGridColumns = document.querySelector('.form-grid-columns');
   const splitInputs = Array.from(formGridColumns.querySelectorAll('input.split-column'));
   const filtered = splitInputs.filter(i => i !== el.columns);
-  return [parseInt(el.columns.value) || 1, ...filtered.map(i => parseInt(i.value) || 1)];
+  return [
+    Math.max(1, parseInt(el.columns.value) || 1),
+    ...filtered.map(i => Math.max(1, parseInt(i.value) || 1))
+  ];
 }
 
 function saveSettings() {
+  cancelPendingCorrection();
+
   let gridWidth = parseInt(el.gridWidth.value);
   let columns = parseInt(el.columns.value);
   let gutterSize = parseInt(el.gutterSize.value);
   let gridColor = el.gridColor.value || DEFAULTS.gridColor;
   let opacityPercent = parseFloat(el.opacity.value);
+  const splitRatios = splitGridState ? getSplitColumnsArray() : null;
 
   let valid = true;
   let corrections = [];
@@ -299,16 +349,6 @@ function saveSettings() {
   } else {
     el.gutterSize.classList.remove('invalid-field');
   }
-  if (gutterSize >= (gridWidth || 1)) {
-    el.gutterSize.classList.add('invalid-field');
-    valid = false;
-    showTooltip(el.gutterSize, 'Gutter size must be less than grid width.');
-    corrections.push(() => {
-      gutterSize = DEFAULTS.gutterSize;
-      el.gutterSize.value = gutterSize;
-      el.gutterSize.classList.remove('invalid-field');
-    });
-  }
   // Grid width
   if (el.gridWidth.value === '' || !gridWidth || gridWidth <= 0) {
     el.gridWidth.classList.add('invalid-field');
@@ -324,18 +364,52 @@ function saveSettings() {
   }
 
   // Columns
-  if (el.columns.value === '' || columns < 1) {
+  const columnsOutOfRange = !splitGridState && columns > MAX_COLUMNS;
+  if (el.columns.value === '' || columns < 1 || columnsOutOfRange) {
     el.columns.classList.add('invalid-field');
     valid = false;
-    showTooltip(el.columns, 'Columns must be at least 1.');
+    showTooltip(
+      el.columns,
+      splitGridState ? 'Column value must be at least 1.' : `Columns must be between 1 and ${MAX_COLUMNS}.`
+    );
     corrections.push(() => {
-      columns = DEFAULTS.columns;
+      columns = splitGridState ? 1 : DEFAULTS.columns;
       el.columns.value = columns;
       el.columns.classList.remove('invalid-field');
     });
   } else {
     el.columns.classList.remove('invalid-field');
   }
+
+  // Gutter must leave a positive width for every column
+  if (valid && (!splitGridState || splitRatios.every(ratio => ratio >= 1))) {
+    const maxGutter = getMaxGutter(gridWidth, columns, splitRatios);
+    if (maxGutter < 1 || gutterSize > maxGutter) {
+      el.gutterSize.classList.add('invalid-field');
+      valid = false;
+      showTooltip(el.gutterSize, 'Gutter size is too large for this grid width and column count.');
+      corrections.push(() => {
+        const safeGutter = getMaxGutter(gridWidth, columns, splitRatios);
+        if (safeGutter >= 1) {
+          gutterSize = safeGutter;
+          el.gutterSize.value = safeGutter;
+        } else {
+          // No positive gutter fits; restore a known-good layout.
+          gridWidth = DEFAULTS.gridWidth;
+          columns = DEFAULTS.columns;
+          gutterSize = DEFAULTS.gutterSize;
+          el.gridWidth.value = gridWidth;
+          el.columns.value = columns;
+          el.gutterSize.value = gutterSize;
+          splitGridState = false;
+          splitColumnValues = [DEFAULTS.columns];
+          restoreSplitGridUI();
+        }
+        el.gutterSize.classList.remove('invalid-field');
+      });
+    }
+  }
+
   // Opacity
   if (el.opacity.value === '' || opacityPercent < 0 || opacityPercent > 100 || isNaN(opacityPercent)) {
     el.opacity.classList.add('invalid-field');
@@ -356,7 +430,8 @@ function saveSettings() {
 
   // Delay auto-correction by 1.5s to allow user to finish typing
   if (corrections.length > 0) {
-    setTimeout(() => {
+    correctionTimer = setTimeout(() => {
+      correctionTimer = null;
       corrections.forEach(fn => fn());
       // After correction, re-save settings
       saveSettings();
@@ -373,7 +448,11 @@ function saveSettings() {
 
   // Update splitColumnValues first, then create settings object
   if (splitGridState) {
-    splitColumnValues = getSplitColumnsArray();
+    splitColumnValues = splitRatios;
+    const splitInputs = Array.from(document.querySelectorAll('.form-grid-columns input.split-column'));
+    splitInputs.forEach((input, index) => {
+      input.value = splitColumnValues[index + 1];
+    });
   } else {
     splitColumnValues = [columns];
   }
@@ -392,7 +471,12 @@ function saveSettings() {
     ...settings,
     splitGridState,
     splitColumnValues
-  }, () => updateGrid(settings));
+  }, () => {
+    if (chrome.runtime.lastError) {
+      console.warn('Layout Grid Visualizer: failed to save settings:', chrome.runtime.lastError.message);
+    }
+    updateGrid(settings);
+  });
 }
 
 async function toggleGrid() {
@@ -444,6 +528,8 @@ function splitGrid() {
 }
 
 async function resetToDefaults() {
+  cancelPendingCorrection();
+
   el.gridWidth.value = DEFAULTS.gridWidth;
   el.columns.value = DEFAULTS.columns;
   el.gutterSize.value = DEFAULTS.gutterSize;
