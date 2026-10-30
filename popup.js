@@ -511,7 +511,9 @@ async function toggleGrid() {
 }
 
 function updateToggleButton(isVisible) {
-  el.toggleGrid.textContent = isVisible ? 'Hide Grid' : 'Show Grid';
+  const label = isVisible ? 'Hide Grid' : 'Show Grid';
+  el.toggleGrid.textContent = label;
+  el.toggleGrid.title = isVisible ? 'Hide the grid overlay' : 'Show the grid overlay';
   el.toggleGrid.style.background = isVisible ? '#d93025' : '#1a73e8';
 }
 
